@@ -5,7 +5,7 @@ using System;
 
 using CS;
 using CS.Components;
-using CS.Util;
+using Util;
 using Entities;
 
 namespace TankComProject
@@ -29,6 +29,8 @@ namespace TankComProject
 		DebugGraph fpsGraph;
 		TransformSystem transSys;
 		TextureSystem textureSys;
+		MouseFollowSystem mousesys;
+		int eid;
 
 		public Game1()
 		{
@@ -48,35 +50,43 @@ namespace TankComProject
 		protected override void Initialize()
 		{
 			// TODO: Add your initialization logic here
-			graphics.PreferredBackBufferWidth = 800*2;//GraphicsDevice.DisplayMode.Width;
-			graphics.PreferredBackBufferHeight = 600*2;//GraphicsDevice.DisplayMode.Height;
-			graphics.SynchronizeWithVerticalRetrace = true;
+			graphics.PreferredBackBufferWidth = GraphicsDevice.DisplayMode.Width;
+			graphics.PreferredBackBufferHeight = GraphicsDevice.DisplayMode.Height;
+			//graphics.SynchronizeWithVerticalRetrace = false;
+			graphics.IsFullScreen = true;
 			graphics.ApplyChanges();
-			//graphics.IsFullScreen = true;
 
-			fpsGraph = new DebugGraph(GraphicsDevice, new Rectangle(0, 0, 200, 50), 100, 60);
+			fpsGraph = new DebugGraph(GraphicsDevice, new Rectangle(0, 50, 200, 25), 100, 60);
 
 			G = new Global(this);
 
 			state = new State(G);
 			transSys = new TransformSystem(state);
 			textureSys = new TextureSystem(state, GraphicsDevice, transSys);
-			MouseFollowSystem mousesys = new MouseFollowSystem(state, transSys);
+			mousesys = new MouseFollowSystem(state, transSys);
+			DragAndDropSystem ddSys = new DragAndDropSystem(state);
 
 			//state.RegisterSystem(transSys);
 			//state.RegisterSystem(textureSys);
 			for (int i = 0; i < 1; ++i)
 			{
 				var e = state.CreateEntity();
-				transform t = new transform();
+				Transform t = new Transform();
 				t.position = new Vector2(0, 0);
-				t.velocity = new Vector2(100, 0);
+				t.velocity = new Vector2(131, 0);
 				transSys.AddComponent(e, t);
 
 				Texture2 texture = new Texture2(G, "SomeGuy1");
+				texture.setScale(4, 4);
 				textureSys.AddComponent(e, texture);
+				ddSys.AddEntity(e);
 				//mousesys.AddEntity(e);
 			}
+			Image img = new Image(state, "cursor", new Vector2(0, 0), 0.1f);
+			Image img2 = new Image(state, "landscape1", new Vector2(0, 0));
+			eid = img2.id;
+			ddSys.AddEntity(eid);
+			mousesys.AddEntity(img.id);
 			G.ActivateState(state);
 			//e = state.CreateEntity();
 			//p = new Position(10, 10);
@@ -119,7 +129,7 @@ namespace TankComProject
 		{
 			// TODO: Unload any non ContentManager content here
 		}
-
+		bool mhold = false;
 		/// <summary>
 		/// Allows the game to run logic such as updating the world,
 		/// checking for collisions, gathering input, and playing audio.
@@ -129,14 +139,16 @@ namespace TankComProject
 		{
 			if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
 				Exit();
-			if(Keyboard.GetState().IsKeyDown(Keys.F1))
-				TargetElapsedTime = new System.TimeSpan(0, 0, 0, 0, 33/2);
+			if (Keyboard.GetState().IsKeyDown(Keys.F1))
+				mousesys.AddEntity(1);
 			if (Keyboard.GetState().IsKeyDown(Keys.F2))
-				TargetElapsedTime = new System.TimeSpan(0, 0, 0, 0, 33/2/2);
-
+				mousesys.RemoveEntity(1);
 
 			// TODO: Add your update logic here
 			G.Update(gameTime);
+			//var fpsTime = ((double)1000 / gameTime.ElapsedGameTime.Milliseconds);
+
+			//fpsGraph.Update(fpsTime);
 
 			base.Update(gameTime);
 		}
@@ -149,14 +161,15 @@ namespace TankComProject
 		{
 			GraphicsDevice.Clear(Color.CornflowerBlue);
 			var fpsTime = ((double)1000 / gameTime.ElapsedGameTime.Milliseconds);
+
 			fpsGraph.Update(fpsTime);
 			spriteBatch.Begin(sortMode: SpriteSortMode.FrontToBack, samplerState: SamplerState.PointClamp);
 			{ 
 				Vector2 textMiddlePoint = font.MeasureString("HELLO") / 2;
 				// Places text in center of the screen
 				G.Render(spriteBatch);
-				spriteBatch.DrawString(font, "FPS: " + fpsTime.ToString(), position, Color.White, 0, Vector2.Zero, 1.0f, SpriteEffects.None, 0.9f);
-				spriteBatch.DrawString(font, "Memory:" + GC.GetTotalMemory(false) / 1024, new Vector2(10, 10), Color.White);
+				spriteBatch.DrawString(font, "FPS: " + fpsTime.ToString(), position, Color.White, 0, Vector2.Zero, 0.5f, SpriteEffects.None, 0.9f);
+				spriteBatch.DrawString(font, "Memory:" + GC.GetTotalMemory(false) / 1024, new Vector2(0, 10), Color.White, 0, Vector2.Zero, 0.5f, SpriteEffects.None, 0.9f);
 				fpsGraph.Draw(spriteBatch);
 			}
 			spriteBatch.End();

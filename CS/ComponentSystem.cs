@@ -1,14 +1,8 @@
 ﻿using System.Collections.Generic;
-using System.IO;
-using System.Collections;
-using System.Runtime.Serialization;
-using System.Runtime.Serialization.Formatters.Binary;
 using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Graphics;
-
-using CS.Util;
 
 namespace CS
 {
@@ -17,40 +11,79 @@ namespace CS
 		public State _state;
 		public uint systemIndex;
 		protected int[] entityIDs;
+		protected int[] freeIndexes;
 		protected int size;
 
+		public int updateIndex = -1;
+		public int renderIndex = -1;
 
 		public BaseSystem(State state)
 		{
 			_state = state;
 			systemIndex = state.RegisterSystem(this);
 			entityIDs = new int[0];
+			freeIndexes = new int[0];
 			size = 0;
 		}
 
-		public void AddEntity(int id)
+		public int AddEntity(int id)
 		{
-			size++;
-			Array.Resize(ref entityIDs, size);
-			entityIDs[size - 1] = id;
+			var cindex = _state.getComponentIndex(id, systemIndex);
+			if (cindex != -1)
+				return cindex;
+			if (freeIndexes.Length == 0)
+			{
+				size++;
+				Array.Resize(ref entityIDs, size);
+				entityIDs[size - 1] = id;
+
+				_state.AddComponent(id, systemIndex, size - 1);
+				return size - 1;
+			} else
+			{
+				var index = freeIndexes[freeIndexes.Length - 1];
+
+				entityIDs[index] = id;
+				_state.AddComponent(id, systemIndex, index);
+
+				Array.Resize(ref freeIndexes, freeIndexes.Length - 1);
+
+				return index;
+			}
 		}
+
+		public void RemoveEntity(int id)
+		{
+			var index = _state.getComponentIndex(id, systemIndex);
+			if (index == -1)
+				return;
+
+			entityIDs[index] = -1;
+
+			Array.Resize(ref freeIndexes, freeIndexes.Length + 1);
+			freeIndexes[freeIndexes.Length - 1] = index;
+			_state.RemoveComponent(id, systemIndex);
+		}
+
+		public bool ContainsEntity(int id, ref int index)
+		{
+			var indx = _state.getComponentIndex(id, systemIndex);
+			index = indx;
+			if (indx != -1)
+				return true;
+			else
+				return false;
+		}
+
 	}
 
 	interface ISysUpdateable
 	{
-		uint UpdateIndex
-		{
-			get;
-		}
 		void Update(Global G);
 	}
 
 	interface ISysRenderable
 	{
-		uint RenderIndex
-		{
-			get;
-		}
 		SpriteBatch Batch
 		{
 			get;
@@ -78,11 +111,11 @@ namespace CS
 
 		public void AddComponent(int id, T component)
 		{
-			AddEntity(id);
-			Array.Resize(ref components, size);
-			components[size - 1] = component;
+			var index = AddEntity(id);
+			if(index+1 >= size)
+				Array.Resize(ref components, size);
+			components[index] = component;
 
-			_state.AddComponent(id, systemIndex, size - 1);
 		}
 
 		public T getComponent(int index)
@@ -125,6 +158,7 @@ namespace CS
 				usize++;
 				Array.Resize(ref updatableIndexes, usize);
 				updatableIndexes[usize - 1] = (uint) size - 1;
+				system.updateIndex = usize - 1;
 			}
 
 			if (system is ISysRenderable)
@@ -133,6 +167,7 @@ namespace CS
 				usize++;
 				Array.Resize(ref renderableIndexes, usize);
 				renderableIndexes[usize - 1] = (uint)size - 1;
+				system.renderIndex = usize - 1;
 			}
 
 			return (uint) size - 1;
@@ -168,9 +203,30 @@ namespace CS
 		}
 
 
-		public void AddComponent(int entityID, uint SystemID, int index)
+		public void AddComponent(int entityID, uint systemID, int index)
 		{
-			entitiesIndexes[entityID][SystemID] = index;
+			entitiesIndexes[entityID][systemID] = index;
+		}
+
+		public void RemoveComponent(int entityID, uint systemID)
+		{
+			entitiesIndexes[entityID][systemID] = -1;
+		}
+
+		public int getComponentIndex(int entityID, uint systemID)
+		{
+			return entitiesIndexes[entityID][systemID];
+		}
+
+		public T getSystem<T>()  where T : BaseSystem
+		{
+			foreach (BaseSystem system in systems)
+			{
+				if (system is T)
+					return system as T;
+			}
+
+			return null;
 		}
 	}
 

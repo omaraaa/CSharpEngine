@@ -5,7 +5,7 @@ using System.Text;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework;
 
-namespace CS.Util
+namespace Util
 {
     class DebugGraph
     {
@@ -14,13 +14,14 @@ namespace CS.Util
 		private int defaultScale;
 		private double target;
 		private Rectangle dest;
+		private Color[] data;
 
 		public DebugGraph(GraphicsDevice device, Rectangle renderRect, int xScale, double targetValue)
 		{
 			var width = renderRect.Width;
 			var height = renderRect.Height;
 			texture = new Texture2D(device, width, height);
-			Color[] data = new Color[width * height];
+			data = new Color[width * height];
 			for (int i = 0; i < data.Length; ++i)
 			{
 				if (i % width == 10 && (i / width) % height == height - 10)
@@ -44,7 +45,6 @@ namespace CS.Util
 		{
 			var width = texture.Width;
 			var height = texture.Height;
-			Color[] data = new Color[texture.Width * texture.Height];
 			texture.GetData(data);
 
 			if(value > defaultScale)

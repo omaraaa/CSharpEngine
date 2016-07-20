@@ -1,16 +1,22 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using Microsoft.Xna.Framework.Input.Touch;
 using System;
+using System.Diagnostics;
 
 using CS;
 using CS.Components;
 using Util;
 using Entities;
 
+using MoonSharp.Interpreter;
+
+
+
 namespace TankComProject
 {
-
+	
 	delegate void funcD(params object[] objs);
 
 	/// <summary>
@@ -30,7 +36,29 @@ namespace TankComProject
 		TransformSystem transSys;
 		TextureSystem textureSys;
 		MouseFollowSystem mousesys;
+		DragAndDropSystem ddSys;
+		CollisionSystem collSys;
+		PhysicsSystem physics;
+		Random r;
 		int eid;
+
+		double MoonSharpFactorial()
+		{
+			string script = @"    
+		-- defines a factorial function
+		function fact (n)
+			if (n == 0) then
+				return 1
+			else
+				return n*fact(n - 1)
+			end
+		end
+
+		return fact(5)";
+
+			DynValue res = Script.RunString(script);
+			return res.Number;
+		}
 
 		public Game1()
 		{
@@ -50,10 +78,10 @@ namespace TankComProject
 		protected override void Initialize()
 		{
 			// TODO: Add your initialization logic here
-			graphics.PreferredBackBufferWidth = GraphicsDevice.DisplayMode.Width;
-			graphics.PreferredBackBufferHeight = GraphicsDevice.DisplayMode.Height;
-			//graphics.SynchronizeWithVerticalRetrace = false;
-			graphics.IsFullScreen = true;
+			//graphics.PreferredBackBufferWidth = 600;//GraphicsDevice.DisplayMode.Width;
+			//graphics.PreferredBackBufferHeight = 400;//GraphicsDevice.DisplayMode.Height;
+			graphics.SynchronizeWithVerticalRetrace = false;
+			//graphics.IsFullScreen = true;
 			graphics.ApplyChanges();
 
 			fpsGraph = new DebugGraph(GraphicsDevice, new Rectangle(0, 50, 200, 25), 100, 60);
@@ -62,42 +90,83 @@ namespace TankComProject
 
 			state = new State(G);
 			transSys = new TransformSystem(state);
-			textureSys = new TextureSystem(state, GraphicsDevice, transSys);
+			physics = new PhysicsSystem(state);
+			textureSys = new TextureSystem(state, GraphicsDevice, transSys, physics);
 			mousesys = new MouseFollowSystem(state, transSys);
-			DragAndDropSystem ddSys = new DragAndDropSystem(state);
+			ddSys = new DragAndDropSystem(state);
+			collSys = new CollisionSystem(state);
+			r = new Random();
 
 			//state.RegisterSystem(transSys);
 			//state.RegisterSystem(textureSys);
-			for (int i = 0; i < 1; ++i)
+			for (int i = 0; i <0; ++i)
 			{
 				var e = state.CreateEntity();
 				Transform t = new Transform();
-				t.position = new Vector2(0, 0);
-				t.velocity = new Vector2(131, 0);
 				transSys.AddComponent(e, t);
 
 				Texture2 texture = new Texture2(G, "SomeGuy1");
-				texture.setScale(4, 4);
+				texture.setScale(1, 1);
+				t.position = new Vector2(4*i, 100);
 				textureSys.AddComponent(e, texture);
 				ddSys.AddEntity(e);
+
+
+				PhysicsObject p = new PhysicsObject(physics, texture.textureRect.Width, texture.textureRect.Height, FarseerPhysics.Dynamics.BodyType.Dynamic);
+				//p.body.IsBullet = true;
+				physics.AddComponent(e, p);
 				//mousesys.AddEntity(e);
 			}
-			Image img = new Image(state, "cursor", new Vector2(0, 0), 0.1f);
-			Image img2 = new Image(state, "landscape1", new Vector2(0, 0));
-			eid = img2.id;
-			ddSys.AddEntity(eid);
-			mousesys.AddEntity(img.id);
+			{
+				Image img = new Image(state, "cursor", new Vector2(0, 0), 0.1f);
+				Image img2 = new Image(state, "landscape1", new Vector2(10, 10));
+				eid = img2.id;
+				ddSys.AddEntity(eid);
+				mousesys.AddEntity(img.id);
+				var textC = textureSys.getComponent(img2.textureIndex);
+				PhysicsObject p2 = new PhysicsObject(physics, textC.textureRect.Width, textC.textureRect.Height, FarseerPhysics.Dynamics.BodyType.Dynamic);
+				physics.AddComponent(eid, p2);
+			}
+
+			var thickness = 100;
+			{
+				var e = state.CreateEntity();
+				Transform t = new Transform();
+				t.position.Y = graphics.PreferredBackBufferHeight + thickness/2;
+				t.position.X = graphics.PreferredBackBufferWidth / 2;
+				transSys.AddComponent(e, t);
+				PhysicsObject p = new PhysicsObject(physics, graphics.PreferredBackBufferWidth, thickness, FarseerPhysics.Dynamics.BodyType.Static);
+				physics.AddComponent(e, p);
+			}
+
+			{
+				var e = state.CreateEntity();
+				Transform t = new Transform();
+				t.position.Y = 0- thickness/2;
+				t.position.X = graphics.PreferredBackBufferWidth / 2;
+				transSys.AddComponent(e, t);
+				PhysicsObject p = new PhysicsObject(physics, graphics.PreferredBackBufferWidth, thickness, FarseerPhysics.Dynamics.BodyType.Static);
+				physics.AddComponent(e, p);
+			}
+			{
+				var e = state.CreateEntity();
+				Transform t = new Transform();
+				t.position.Y = graphics.PreferredBackBufferHeight / 2;
+				t.position.X = graphics.PreferredBackBufferWidth + thickness/2;
+				transSys.AddComponent(e, t);
+				PhysicsObject p = new PhysicsObject(physics, thickness, graphics.PreferredBackBufferHeight, FarseerPhysics.Dynamics.BodyType.Static);
+				physics.AddComponent(e, p);
+			}
+			{
+				var e = state.CreateEntity();
+				Transform t = new Transform();
+				t.position.Y = graphics.PreferredBackBufferHeight / 2;
+				t.position.X = 0- thickness / 2;
+				transSys.AddComponent(e, t);
+				PhysicsObject p = new PhysicsObject(physics, thickness, graphics.PreferredBackBufferHeight, FarseerPhysics.Dynamics.BodyType.Static);
+				physics.AddComponent(e, p);
+			}
 			G.ActivateState(state);
-			//e = state.CreateEntity();
-			//p = new Position(10, 10);
-			//Transform pos = new Transform(e, 10, 10);
-			//pos.vel.X = 200;
-			//e.AddComponent(ref pos, "pos");
-			//var mf = new MouseFollower(e, pos);
-			//e.AddComponent(ref mf, "mouseFollower");
-			//Texture2DC text = new Texture2DC(e, "landscape1", e.GetComponent<Transform>("pos"));
-			//e.AddComponent(ref text, "texture");
-			String[] imgs = { "cursor", "SomeGuy1" };
 
 			base.Initialize();
 		}
@@ -130,6 +199,7 @@ namespace TankComProject
 			// TODO: Unload any non ContentManager content here
 		}
 		bool mhold = false;
+		MouseState mousestate;
 		/// <summary>
 		/// Allows the game to run logic such as updating the world,
 		/// checking for collisions, gathering input, and playing audio.
@@ -144,8 +214,46 @@ namespace TankComProject
 			if (Keyboard.GetState().IsKeyDown(Keys.F2))
 				mousesys.RemoveEntity(1);
 
+
+
+
 			// TODO: Add your update logic here
+			var dmx = mousestate.X;
+			var dmy = mousestate.Y;
+			mousestate = Mouse.GetState();
+			var touch = TouchPanel.GetState();
+			if (G.mouseState.RightButton == ButtonState.Pressed || touch.Count == 2)
+			{
+				var e = state.CreateEntity();
+				Transform t = new Transform();
+				t.position.X = (float)mousestate.X;
+				t.position.Y = (float) mousestate.Y;
+				if(touch.Count == 2)
+				{
+					t.position.X += touch[0].Position.X;
+					t.position.Y +=  touch[0].Position.Y;
+				}
+				Debug.Assert(!float.IsNaN(t.position.X) && !float.IsNaN(t.position.Y));
+				transSys.AddComponent(e, t);
+
+				Texture2 texture = new Texture2(G, "SomeGuy1");
+				texture.setScale(0.5f, 0.5f);
+				//t.position.X += r.Next() % 3;
+				textureSys.AddComponent(e, texture);
+				ddSys.AddEntity(e);
+
+
+				PhysicsObject p = new PhysicsObject(physics, texture.textureRect.Width, texture.textureRect.Height, FarseerPhysics.Dynamics.BodyType.Dynamic);
+				//p.body.IgnoreCCD = true;
+				//p.body.Restitution = 0;
+				//p.body.FixedRotation = true;
+				//p.body.Friction = 1;
+				//p.body.IsBullet = true;
+				physics.AddComponent(e, p);
+				//mousesys.AddEntity(e);
+			}
 			G.Update(gameTime);
+
 			//var fpsTime = ((double)1000 / gameTime.ElapsedGameTime.Milliseconds);
 
 			//fpsGraph.Update(fpsTime);

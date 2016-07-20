@@ -2,6 +2,7 @@
 using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
+using Microsoft.Xna.Framework.Input.Touch;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace CS
@@ -90,7 +91,6 @@ namespace CS
 		}
 		void Render();
 	}
-
 	/*
 	 * System that manages the storage and update of differening components
 	 */
@@ -109,13 +109,13 @@ namespace CS
 			cachedComponent = 0;
 		}
 
-		public void AddComponent(int id, T component)
+		public int AddComponent(int id, T component)
 		{
 			var index = AddEntity(id);
 			if(index+1 >= size)
 				Array.Resize(ref components, size);
 			components[index] = component;
-
+			return index;
 		}
 
 		public T getComponent(int index)
@@ -235,7 +235,6 @@ namespace CS
 	
 
 
-
 	[Serializable()]
 	class Global
 	{
@@ -246,6 +245,8 @@ namespace CS
 		public GameTime gametime;
 		public float dt;
 		public MouseState mouseState;
+		public TouchCollection touchCollection;
+		public KeyboardState keyboardState;
 
 		public Global(Game g)
 		{
@@ -259,6 +260,8 @@ namespace CS
 			dt = (float) gametime.ElapsedGameTime.TotalSeconds;
 
 			mouseState = Mouse.GetState();
+			touchCollection = TouchPanel.GetState();
+			keyboardState = Keyboard.GetState();
 
 			foreach (State s in activeStates)
 			{

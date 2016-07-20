@@ -11,11 +11,10 @@
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)CS\Basic.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)CS\ComponentSystem.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)CS\Physics.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)CS\Util\ComponentsContainer.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)CS\Util\DebugGraph.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Game1.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="$(MSBuildThisFileDirectory)Game\" />
+    <Compile Include="$(MSBuildThisFileDirectory)Game\Player.cs" />
   </ItemGroup>
 </Project>

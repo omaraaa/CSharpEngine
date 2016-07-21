@@ -95,6 +95,7 @@ namespace TankComProject
 			mousesys = new MouseFollowSystem(state, transSys);
 			ddSys = new DragAndDropSystem(state);
 			collSys = new CollisionSystem(state);
+			PlayerSystem playerSys = new PlayerSystem(state);
 			r = new Random();
 
 			//state.RegisterSystem(transSys);
@@ -112,7 +113,7 @@ namespace TankComProject
 				ddSys.AddEntity(e);
 
 
-				PhysicsObject p = new PhysicsObject(physics, texture.textureRect.Width, texture.textureRect.Height, FarseerPhysics.Dynamics.BodyType.Dynamic);
+				var p = PhysicsObject.CreateBody(physics, texture.textureRect.Width, texture.textureRect.Height, FarseerPhysics.Dynamics.BodyType.Dynamic);
 				//p.body.IsBullet = true;
 				physics.AddComponent(e, p);
 				//mousesys.AddEntity(e);
@@ -124,8 +125,10 @@ namespace TankComProject
 				ddSys.AddEntity(eid);
 				mousesys.AddEntity(img.id);
 				var textC = textureSys.getComponent(img2.textureIndex);
-				PhysicsObject p2 = new PhysicsObject(physics, textC.textureRect.Width, textC.textureRect.Height, FarseerPhysics.Dynamics.BodyType.Dynamic);
+				var p2 = PhysicsObject.CreateBody(physics, textC.textureRect.Width, textC.textureRect.Height, FarseerPhysics.Dynamics.BodyType.Dynamic);
 				physics.AddComponent(eid, p2);
+				var player = new Player(p2);
+				playerSys.AddComponent(eid, player);
 			}
 
 			var thickness = 100;
@@ -135,7 +138,7 @@ namespace TankComProject
 				t.position.Y = graphics.PreferredBackBufferHeight + thickness/2;
 				t.position.X = graphics.PreferredBackBufferWidth / 2;
 				transSys.AddComponent(e, t);
-				PhysicsObject p = new PhysicsObject(physics, graphics.PreferredBackBufferWidth, thickness, FarseerPhysics.Dynamics.BodyType.Static);
+				var p = PhysicsObject.CreateBody(physics, graphics.PreferredBackBufferWidth, thickness, FarseerPhysics.Dynamics.BodyType.Static);
 				physics.AddComponent(e, p);
 			}
 
@@ -145,7 +148,7 @@ namespace TankComProject
 				t.position.Y = 0- thickness/2;
 				t.position.X = graphics.PreferredBackBufferWidth / 2;
 				transSys.AddComponent(e, t);
-				PhysicsObject p = new PhysicsObject(physics, graphics.PreferredBackBufferWidth, thickness, FarseerPhysics.Dynamics.BodyType.Static);
+				var p = PhysicsObject.CreateBody(physics, graphics.PreferredBackBufferWidth, thickness, FarseerPhysics.Dynamics.BodyType.Static);
 				physics.AddComponent(e, p);
 			}
 			{
@@ -154,7 +157,7 @@ namespace TankComProject
 				t.position.Y = graphics.PreferredBackBufferHeight / 2;
 				t.position.X = graphics.PreferredBackBufferWidth + thickness/2;
 				transSys.AddComponent(e, t);
-				PhysicsObject p = new PhysicsObject(physics, thickness, graphics.PreferredBackBufferHeight, FarseerPhysics.Dynamics.BodyType.Static);
+				var p = PhysicsObject.CreateBody(physics, thickness, graphics.PreferredBackBufferHeight, FarseerPhysics.Dynamics.BodyType.Static);
 				physics.AddComponent(e, p);
 			}
 			{
@@ -163,7 +166,7 @@ namespace TankComProject
 				t.position.Y = graphics.PreferredBackBufferHeight / 2;
 				t.position.X = 0- thickness / 2;
 				transSys.AddComponent(e, t);
-				PhysicsObject p = new PhysicsObject(physics, thickness, graphics.PreferredBackBufferHeight, FarseerPhysics.Dynamics.BodyType.Static);
+				var p = PhysicsObject.CreateBody(physics, thickness, graphics.PreferredBackBufferHeight, FarseerPhysics.Dynamics.BodyType.Static);
 				physics.AddComponent(e, p);
 			}
 			G.ActivateState(state);
@@ -243,7 +246,7 @@ namespace TankComProject
 				ddSys.AddEntity(e);
 
 
-				PhysicsObject p = new PhysicsObject(physics, texture.textureRect.Width, texture.textureRect.Height, FarseerPhysics.Dynamics.BodyType.Dynamic);
+				var p = PhysicsObject.CreateBody(physics, texture.textureRect.Width, texture.textureRect.Height, FarseerPhysics.Dynamics.BodyType.Dynamic);
 				//p.body.IgnoreCCD = true;
 				//p.body.Restitution = 0;
 				//p.body.FixedRotation = true;

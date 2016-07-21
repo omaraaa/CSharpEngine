@@ -16,6 +16,7 @@ using FarseerPhysics.Common;
 using FarseerPhysics.Factories;
 using FarseerPhysics.Controllers;
 using FarseerPhysics;
+using FarseerPhysics.DebugView;
 
 namespace CS.Components
 {
@@ -24,27 +25,32 @@ namespace CS.Components
 		public Body body;
 		public Vector2 origin;
 
-		public PhysicsObject(PhysicsSystem sys, int width, int height, BodyType bodytype = BodyType.Static)
+		static public Body CreateBody(PhysicsSystem sys, int width, int height, BodyType bodytype = BodyType.Static)
 		{
-			body = new Body(sys.world);
+			var body = new Body(sys.world);
 			body.BodyType = bodytype;
 			//body.Awake = false;
 			body.SleepingAllowed = true;
 			//body.FixedRotation = true;
-			origin = new Vector2(ConvertUnits.ToSimUnits( width), ConvertUnits.ToSimUnits(height));
 			if(bodytype == BodyType.Dynamic || bodytype == BodyType.Kinematic)
 			FixtureFactory.AttachCircle(ConvertUnits.ToSimUnits( Math.Min(width, height))/2, 1f, body);
 			else
-			FixtureFactory.AttachRectangle(ConvertUnits.ToSimUnits(width), ConvertUnits.ToSimUnits(height), 1f, Vector2.Zero, body);
-			//body.Restitution = 0.1f;
-			body.Friction = 1f;
+			FixtureFactory.AttachRectangle(ConvertUnits.ToSimUnits(width), ConvertUnits.ToSimUnits(height), 0.1f, Vector2.Zero, body);
+			//body.Restitution = 1f;
+			//body.Friction = 1f;
+
+			return body;
 		}
+
+
 	}
 
-	class PhysicsSystem : ComponentSystem<PhysicsObject>, ISysUpdateable
+	class PhysicsSystem : ComponentSystem<Body>, ISysUpdateable, ISysRenderable
 	{
 		public World world;
 		private TransformSystem transformSys;
+		DebugViewXNA debugView;
+		SpriteBatch batch;
 
 		public PhysicsSystem(State state) : base(state)
 		{
@@ -56,6 +62,29 @@ namespace CS.Components
 			Settings.PositionIterations = 1;
 			Settings.EnableDiagnostics.Equals(false);
 			Settings.DefaultFixtureIgnoreCCDWith = Category.All;
+			debugView = new DebugViewXNA(world);
+			debugView.LoadContent(state.G.game.GraphicsDevice, state.G.game.Content);
+			debugView.Enabled = true;
+			batch = new SpriteBatch(state.G.game.GraphicsDevice);
+		}
+
+		public SpriteBatch Batch
+		{
+			get
+			{
+				return batch;
+			}
+		}
+
+		public void Render(Global G)
+		{
+			var proj = Matrix.CreateOrthographicOffCenter(ConvertUnits.ToSimUnits(0), ConvertUnits.ToSimUnits(G.game.GraphicsDevice.Viewport.Width)
+				, ConvertUnits.ToSimUnits(G.game.GraphicsDevice.Viewport.Height), ConvertUnits.ToSimUnits(0), 0, 100);
+			var view = Matrix.CreateLookAt(Vector3.Zero, Vector3.Zero, Vector3.UnitY);
+			batch.Begin();
+			debugView.RenderDebugData(ref proj);
+			//debugView.DrawString(0, 0, "test");
+			batch.End();
 		}
 
 		public void Update(Global G)
@@ -70,7 +99,7 @@ namespace CS.Components
 				if (transformSys.ContainsEntity(entityIDs[i], ref index))
 				{
 					var trans = transformSys.getComponent(index);
-					components[i].body.Position = ConvertUnits.ToSimUnits(trans.position);
+					components[i].Position = ConvertUnits.ToSimUnits(trans.position);
 				}
 			}
 
@@ -81,14 +110,14 @@ namespace CS.Components
 
 			for (int i = 0; i < size; ++i)
 			{
-				if (entityIDs[i] == -1 || !components[i].body.Awake)
+				if (entityIDs[i] == -1 || !components[i].Awake)
 					continue;
 
 				var index = _state.getComponentIndex(entityIDs[i], transformSys.systemIndex);
 				if (index != -1)
 				{
 					var trans = transformSys.getComponent(index);
-					trans.position = ConvertUnits.ToDisplayUnits(components[i].body.Position);
+					trans.position = ConvertUnits.ToDisplayUnits(components[i].Position);
 				}
 
 				

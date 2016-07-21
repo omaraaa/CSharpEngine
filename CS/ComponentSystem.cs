@@ -89,7 +89,7 @@ namespace CS
 		{
 			get;
 		}
-		void Render();
+		void Render(Global G);
 	}
 	/*
 	 * System that manages the storage and update of differening components
@@ -187,7 +187,7 @@ namespace CS
 			foreach (uint index in renderableIndexes)
 			{
 				var sys = systems[index] as ISysRenderable;
-				sys.Render();
+				sys.Render(G);
 			}
 		}
 

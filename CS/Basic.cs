@@ -166,7 +166,7 @@ namespace CS.Components
 			}
 		}
 
-		public void Render()
+		public void Render(Global G)
 		{
 
 			_batch.Begin(sortMode: SpriteSortMode.BackToFront,samplerState: SamplerState.PointWrap);
@@ -183,7 +183,7 @@ namespace CS.Components
 				if(pindex != -1)
 				{
 					var p = physics.getComponent(pindex);
-					textureC.Render(_batch, ConvertUnits.ToDisplayUnits( p.body.Position),  p.body.Rotation);
+					textureC.Render(_batch, ConvertUnits.ToDisplayUnits( p.Position),  p.Rotation);
 				} else
 				{
 					textureC.Render(_batch, transformC.position);
@@ -280,10 +280,10 @@ namespace CS.Components
 					if (physics.ContainsEntity(heldEntity, ref physicsIndex))
 					{
 						var p = physics.getComponent(physicsIndex);
-						if (p.body.IsKinematic)
+						if (p.IsKinematic)
 						{
 							var vel = new Vector2(0, 0);
-							p.body.LinearVelocity = vel;
+							p.LinearVelocity = vel;
 						}
 					}
 				heldEntity = -1;
@@ -297,10 +297,11 @@ namespace CS.Components
 				if(physics.ContainsEntity(heldEntity, ref physicsIndex))
 				{
 					var p = physics.getComponent(physicsIndex);
-					if (p.body.IsStatic)
+					if (p.IsStatic)
 						physicsIndex = -1;
-					var vel = new Vector2(-(p.body.Position.X - ConvertUnits.ToSimUnits(mx - offset.X))* ConvertUnits.ToSimUnits(100), -(p.body.Position.Y - ConvertUnits.ToSimUnits(my - offset.Y)) * ConvertUnits.ToSimUnits( 100));
-					p.body.LinearVelocity = vel;
+					var vel = new Vector2(-(p.Position.X - ConvertUnits.ToSimUnits(mx - offset.X))* ConvertUnits.ToSimUnits(100),
+						-(p.Position.Y - ConvertUnits.ToSimUnits(my - offset.Y)) * ConvertUnits.ToSimUnits(100));
+					p.LinearVelocity = vel;
 				}
 
 				int transIndex = -1;

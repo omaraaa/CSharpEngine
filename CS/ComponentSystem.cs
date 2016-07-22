@@ -184,8 +184,9 @@ namespace CS
 
 		public void Render(SpriteBatch batch)
 		{
-			foreach (uint index in renderableIndexes)
+			for (int i = renderableIndexes.Length-1; i >=0; --i)
 			{
+				var index = renderableIndexes[i];
 				var sys = systems[index] as ISysRenderable;
 				sys.Render(G);
 			}

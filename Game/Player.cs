@@ -23,6 +23,7 @@ class Player
 		leg.OnSeparation = seperation;
 		this.body = body;
 		body.FixedRotation = true;
+		body.SleepingAllowed = false;
 	}
 	bool collision(Fixture a, Fixture b, Contact contact)
 	{

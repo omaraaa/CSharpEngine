@@ -22,8 +22,6 @@ namespace CS.Components
 {
 	class PhysicsObject
 	{
-		public Body body;
-		public Vector2 origin;
 
 		static public Body CreateBody(PhysicsSystem sys, int width, int height, BodyType bodytype = BodyType.Static)
 		{
@@ -78,13 +76,14 @@ namespace CS.Components
 
 		public void Render(Global G)
 		{
+			#if DEBUG
 			var proj = Matrix.CreateOrthographicOffCenter(ConvertUnits.ToSimUnits(0), ConvertUnits.ToSimUnits(G.game.GraphicsDevice.Viewport.Width)
 				, ConvertUnits.ToSimUnits(G.game.GraphicsDevice.Viewport.Height), ConvertUnits.ToSimUnits(0), 0, 100);
-			var view = Matrix.CreateLookAt(Vector3.Zero, Vector3.Zero, Vector3.UnitY);
 			batch.Begin();
 			debugView.RenderDebugData(ref proj);
 			//debugView.DrawString(0, 0, "test");
 			batch.End();
+			#endif
 		}
 
 		public void Update(Global G)

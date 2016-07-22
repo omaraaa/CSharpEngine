@@ -201,7 +201,7 @@ namespace TankComProject
 		{
 			// TODO: Unload any non ContentManager content here
 		}
-		bool mhold = false;
+		//bool mhold = false;
 		MouseState mousestate;
 		/// <summary>
 		/// Allows the game to run logic such as updating the world,

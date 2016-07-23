@@ -53,12 +53,12 @@ namespace CS.Components
 		public PhysicsSystem(State state) : base(state)
 		{
 			transformSys = state.getSystem<TransformSystem>();
-			world = new World(new Vector2(0,10));
 			ConvertUnits.SetDisplayUnitToSimUnitRatio(64);
+			world = new World(new Vector2(0, ConvertUnits.ToSimUnits(2000)));
 			Settings.ContinuousPhysics = false;
 			Settings.VelocityIterations = 6;
 			Settings.PositionIterations = 2;
-			Settings.EnableDiagnostics.Equals(false);
+			//Settings.EnableDiagnostics.Equals(false);
 			Settings.DefaultFixtureIgnoreCCDWith = Category.All;
 			debugView = new DebugViewXNA(world);
 			debugView.LoadContent(state.G.game.GraphicsDevice, state.G.game.Content);
@@ -98,6 +98,8 @@ namespace CS.Components
 				if (transformSys.ContainsEntity(entityIDs[i], ref index))
 				{
 					var trans = transformSys.getComponent(index);
+					if (float.IsNaN(trans.position.X) && float.IsNaN(trans.position.Y))
+						trans.position = Vector2.Zero;
 					components[i].Position = ConvertUnits.ToSimUnits(trans.position);
 				}
 			}

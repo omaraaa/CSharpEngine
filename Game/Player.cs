@@ -17,14 +17,15 @@ class Player
 
 	public Player(Body body)
 	{
-		leg = FixtureFactory.AttachCircle(ConvertUnits.ToSimUnits(32), 0f, body, new Vector2(0, ConvertUnits.ToSimUnits(32)), false);
+		leg = FixtureFactory.AttachRectangle(ConvertUnits.ToSimUnits(100), ConvertUnits.ToSimUnits(1), 0f, new Vector2(0, ConvertUnits.ToSimUnits(32+16+1)), body, false);
 		leg.IsSensor = true;
 		leg.OnCollision = collision;
 		leg.OnSeparation = seperation;
 		this.body = body;
 		body.FixedRotation = true;
 		body.SleepingAllowed = false;
-		body.Friction = 0;
+		body.Friction = 0.5f;
+		body.Mass = 0;
 	}
 	bool collision(Fixture a, Fixture b, Contact contact)
 	{
@@ -55,22 +56,30 @@ class PlayerSystem : ComponentSystem<Player>, ISysUpdateable
 			var player = components[i];
 			var keyState = G.keyboardState;
 			var vel = player.body.LinearVelocity;
+			bool moving = false;
+			var speed = ConvertUnits.ToSimUnits(230);
 
+			if (keyState.IsKeyDown(Keys.A) && vel.X > -speed)
+			{
+				vel.X += -speed;
+				moving = true;
+			}
+			if (keyState.IsKeyDown(Keys.D) && vel.X < speed)
+			{
+				vel.X += speed;
+				moving = true;
+			}
 
-			if (keyState.IsKeyDown(Keys.A))
-			{
-				player.body.ApplyForce(new Vector2(-50, 0));
-			}
-			if (keyState.IsKeyDown(Keys.D))
-			{
-				player.body.ApplyForce(new Vector2(50, 0));
-			}
+			
+
 			var isTouching = player.leg.UserData as bool?;
 			if(keyState.IsKeyDown(Keys.Space) && player.isTouching > 0)
 			{
-				vel.Y = -10;
+				vel.Y = -ConvertUnits.ToSimUnits(500);
+				moving = true;
 
 			}
+
 			player.body.LinearVelocity = vel;
 		}
 	}

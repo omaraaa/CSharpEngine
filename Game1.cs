@@ -78,10 +78,10 @@ namespace TankComProject
 		protected override void Initialize()
 		{
 			// TODO: Add your initialization logic here
-			//graphics.PreferredBackBufferWidth = 600;//GraphicsDevice.DisplayMode.Width;
-			//graphics.PreferredBackBufferHeight = 400;//GraphicsDevice.DisplayMode.Height;
+			graphics.PreferredBackBufferWidth = GraphicsDevice.DisplayMode.Width;
+			graphics.PreferredBackBufferHeight = GraphicsDevice.DisplayMode.Height;
 			graphics.SynchronizeWithVerticalRetrace = false;
-			//graphics.IsFullScreen = true;
+			graphics.IsFullScreen = true;
 			graphics.ApplyChanges();
 
 			fpsGraph = new DebugGraph(GraphicsDevice, new Rectangle(0, 50, 200, 25), 100, 60);

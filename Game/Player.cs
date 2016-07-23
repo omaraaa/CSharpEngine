@@ -3,6 +3,7 @@ using CS;
 using CS.Components;
 
 using FarseerPhysics.Dynamics;
+using FarseerPhysics.Dynamics.Joints;
 using FarseerPhysics.Dynamics.Contacts;
 using FarseerPhysics;
 using FarseerPhysics.Factories;
@@ -14,18 +15,30 @@ class Player
 	public Fixture leg;
 	public Body body;
 	public int isTouching = 0;
+	public Body side;
 
-	public Player(Body body)
+	public Player(World world, Body body)
 	{
-		leg = FixtureFactory.AttachRectangle(ConvertUnits.ToSimUnits(100), ConvertUnits.ToSimUnits(1), 1f, new Vector2(0, ConvertUnits.ToSimUnits(32+16+1)), body, false);
+		leg = FixtureFactory.AttachRectangle(ConvertUnits.ToSimUnits(100-4), ConvertUnits.ToSimUnits(1), 1f, new Vector2(0, ConvertUnits.ToSimUnits(32+16+1)), body, false);
 		leg.IsSensor = true;
 		leg.OnCollision = collision;
 		leg.OnSeparation = seperation;
 		this.body = body;
 		body.FixedRotation = true;
 		body.SleepingAllowed = false;
-		body.Friction = 1f;
+		body.Friction = 0.8f;
 		body.Mass = 1;
+
+		side = BodyFactory.CreateRectangle(world, ConvertUnits.ToSimUnits(102), ConvertUnits.ToSimUnits(10), 1);
+		side.IsStatic = false;
+		side.GravityScale = 0;
+		side.Mass = 0;
+		side.Friction = 0;
+		//leftSide.IgnoreCollisionWith(body);
+		side.SleepingAllowed = false;
+
+		//Joint j = new Jo
+		JointFactory.CreateWeldJoint(world, body, side, body.Position, body.Position);
 	}
 	bool collision(Fixture a, Fixture b, Contact contact)
 	{
@@ -81,6 +94,7 @@ class PlayerSystem : ComponentSystem<Player>, ISysUpdateable
 			}
 
 			player.body.LinearVelocity = vel;
+			//player.side.Position = player.body.Position;
 		}
 	}
 }

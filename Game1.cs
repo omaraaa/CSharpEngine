@@ -127,7 +127,7 @@ namespace TankComProject
 				var textC = textureSys.getComponent(img2.textureIndex);
 				var p2 = PhysicsObject.CreateBody(physics, textC.textureRect.Width, textC.textureRect.Height, FarseerPhysics.Dynamics.BodyType.Dynamic);
 				physics.AddComponent(eid, p2);
-				var player = new Player(p2);
+				var player = new Player(physics.world, p2);
 				playerSys.AddComponent(eid, player);
 			}
 

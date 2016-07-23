@@ -17,15 +17,15 @@ class Player
 
 	public Player(Body body)
 	{
-		leg = FixtureFactory.AttachRectangle(ConvertUnits.ToSimUnits(100), ConvertUnits.ToSimUnits(1), 0f, new Vector2(0, ConvertUnits.ToSimUnits(32+16+1)), body, false);
+		leg = FixtureFactory.AttachRectangle(ConvertUnits.ToSimUnits(100), ConvertUnits.ToSimUnits(1), 1f, new Vector2(0, ConvertUnits.ToSimUnits(32+16+1)), body, false);
 		leg.IsSensor = true;
 		leg.OnCollision = collision;
 		leg.OnSeparation = seperation;
 		this.body = body;
 		body.FixedRotation = true;
 		body.SleepingAllowed = false;
-		body.Friction = 0.5f;
-		body.Mass = 0;
+		body.Friction = 1f;
+		body.Mass = 1;
 	}
 	bool collision(Fixture a, Fixture b, Contact contact)
 	{

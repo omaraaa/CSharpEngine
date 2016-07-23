@@ -272,16 +272,19 @@ namespace TankComProject
 		{
 			GraphicsDevice.Clear(Color.CornflowerBlue);
 			var fpsTime = ((double)1000 / gameTime.ElapsedGameTime.Milliseconds);
-
+			#if DEBUG
 			fpsGraph.Update(fpsTime);
+			#endif
 			spriteBatch.Begin(sortMode: SpriteSortMode.FrontToBack, samplerState: SamplerState.PointClamp);
 			{ 
 				Vector2 textMiddlePoint = font.MeasureString("HELLO") / 2;
 				// Places text in center of the screen
 				G.Render(spriteBatch);
-				spriteBatch.DrawString(font, "FPS: " + fpsTime.ToString(), position, Color.White, 0, Vector2.Zero, 0.5f, SpriteEffects.None, 0.9f);
-				spriteBatch.DrawString(font, "Memory:" + GC.GetTotalMemory(false) / 1024, new Vector2(0, 10), Color.White, 0, Vector2.Zero, 0.5f, SpriteEffects.None, 0.9f);
+				#if DEBUG
+				spriteBatch.DrawString(font, "FPS: " + fpsTime.ToString(), position, Color.White, 0, Vector2.Zero, 1f, SpriteEffects.None, 0.9f);
+				spriteBatch.DrawString(font, "Memory:" + GC.GetTotalMemory(false) / 1024, new Vector2(0, 10), Color.White, 0, Vector2.Zero, 1f, SpriteEffects.None, 0.9f);
 				fpsGraph.Draw(spriteBatch);
+				#endif
 			}
 			spriteBatch.End();
 

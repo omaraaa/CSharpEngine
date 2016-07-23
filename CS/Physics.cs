@@ -35,7 +35,7 @@ namespace CS.Components
 			else
 			FixtureFactory.AttachRectangle(ConvertUnits.ToSimUnits(width), ConvertUnits.ToSimUnits(height), 0.1f, Vector2.Zero, body);
 			//body.Restitution = 1f;
-			//body.Friction = 1f;
+			body.Friction = 1f;
 
 			return body;
 		}
@@ -53,11 +53,11 @@ namespace CS.Components
 		public PhysicsSystem(State state) : base(state)
 		{
 			transformSys = state.getSystem<TransformSystem>();
-			world = new World(new Vector2(0,100));
-			ConvertUnits.SetDisplayUnitToSimUnitRatio(8);
+			world = new World(new Vector2(0,10));
+			ConvertUnits.SetDisplayUnitToSimUnitRatio(64);
 			Settings.ContinuousPhysics = false;
-			Settings.VelocityIterations = 1;
-			Settings.PositionIterations = 1;
+			Settings.VelocityIterations = 6;
+			Settings.PositionIterations = 2;
 			Settings.EnableDiagnostics.Equals(false);
 			Settings.DefaultFixtureIgnoreCCDWith = Category.All;
 			debugView = new DebugViewXNA(world);
@@ -102,13 +102,15 @@ namespace CS.Components
 				}
 			}
 
-			if(G.dt < 1/60f)
+			if(G.dt < 1/30f)
 				world.Step(G.dt);
 			else
-				world.Step(1 / 60f);
+				world.Step(1 / 30f);
 
 			for (int i = 0; i < size; ++i)
 			{
+				if (!components [i].Awake)
+					components [i].IsStatic = true;
 				if (entityIDs[i] == -1 || !components[i].Awake)
 					continue;
 
@@ -119,8 +121,7 @@ namespace CS.Components
 					trans.position = ConvertUnits.ToDisplayUnits(components[i].Position);
 				}
 
-				
-			}
+				}
 		}
 	}
 }

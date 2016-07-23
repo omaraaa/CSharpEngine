@@ -46,6 +46,11 @@ namespace Util
 			var width = texture.Width;
 			var height = texture.Height;
 			texture.GetData(data);
+			Color c = Color.Red;
+
+			if(value > this.target)
+				c = Color.Green;
+				
 
 			if(value > defaultScale)
 			{
@@ -63,11 +68,11 @@ namespace Util
 					data[i] = Color.Transparent;
 					if ((i / width) % height > height - (value / scale) * height)
 					{
-						data[i] = Color.Red;
+						data[i] = c;
 					}
 
 					if ((i / width) % height == height - (target / scale) * height)
-						data[i] = Color.Green;
+						data[i] = Color.Blue;
 					continue;
 				}
 				data[i] = data[i + 1];

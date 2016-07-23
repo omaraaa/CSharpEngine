@@ -24,6 +24,7 @@ class Player
 		this.body = body;
 		body.FixedRotation = true;
 		body.SleepingAllowed = false;
+		body.Friction = 0;
 	}
 	bool collision(Fixture a, Fixture b, Contact contact)
 	{
@@ -58,16 +59,16 @@ class PlayerSystem : ComponentSystem<Player>, ISysUpdateable
 
 			if (keyState.IsKeyDown(Keys.A))
 			{
-				player.body.ApplyForce(new Vector2(-10000, 0));
+				player.body.ApplyForce(new Vector2(-50, 0));
 			}
 			if (keyState.IsKeyDown(Keys.D))
 			{
-				player.body.ApplyForce(new Vector2(10000, 0));
+				player.body.ApplyForce(new Vector2(50, 0));
 			}
 			var isTouching = player.leg.UserData as bool?;
 			if(keyState.IsKeyDown(Keys.Space) && player.isTouching > 0)
 			{
-				vel.Y = -50;
+				vel.Y = -10;
 
 			}
 			player.body.LinearVelocity = vel;

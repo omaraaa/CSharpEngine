@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Input.Touch;
 using System;
+using System.IO;
 using System.Diagnostics;
 
 using CS;
@@ -39,6 +40,7 @@ namespace TankComProject
 		DragAndDropSystem ddSys;
 		CollisionSystem collSys;
 		PhysicsSystem physics;
+		FileStream fs;
 		Random r;
 		int eid;
 
@@ -77,6 +79,8 @@ namespace TankComProject
 		/// </summary>
 		protected override void Initialize()
 		{
+			fs = new FileStream("data", FileMode.OpenOrCreate, FileAccess.ReadWrite);
+
 			// TODO: Add your initialization logic here
 			graphics.PreferredBackBufferWidth = GraphicsDevice.DisplayMode.Width;
 			graphics.PreferredBackBufferHeight = GraphicsDevice.DisplayMode.Height;
@@ -90,7 +94,7 @@ namespace TankComProject
 
 			state = new State(G);
 			transSys = new TransformSystem(state);
-			physics = new PhysicsSystem(state);
+			physics = new PhysicsSystem(G, state);
 			textureSys = new TextureSystem(state, GraphicsDevice, transSys, physics);
 			mousesys = new MouseFollowSystem(state, transSys);
 			ddSys = new DragAndDropSystem(state);
@@ -125,7 +129,12 @@ namespace TankComProject
 				ddSys.AddEntity(eid);
 				mousesys.AddEntity(img.id);
 				var textC = textureSys.getComponent(img2.textureIndex);
-				var p2 = PhysicsObject.CreateBody(physics, textC.textureRect.Width, textC.textureRect.Height, FarseerPhysics.Dynamics.BodyType.Dynamic);
+				var p2 = 
+					FarseerPhysics.Factories.BodyFactory.CreateCircle(physics.world,
+					Math.Min(FarseerPhysics.ConvertUnits.ToSimUnits( textC.textureRect.Width/2f),
+					FarseerPhysics.ConvertUnits.ToSimUnits(textC.textureRect.Height/2f)),
+					1f);
+				p2.IsStatic = false;
 				physics.AddComponent(eid, p2);
 				var player = new Player(physics.world, p2);
 				playerSys.AddComponent(eid, player);
@@ -240,7 +249,7 @@ namespace TankComProject
 				transSys.AddComponent(e, t);
 
 				Texture2 texture = new Texture2(G, "SomeGuy1");
-				texture.setScale(0.5f, 0.5f);
+				texture.setScale(1f, 1f);
 				//t.position.X += r.Next() % 3;
 				textureSys.AddComponent(e, texture);
 				ddSys.AddEntity(e);
@@ -260,6 +269,12 @@ namespace TankComProject
 			//var fpsTime = ((double)1000 / gameTime.ElapsedGameTime.Milliseconds);
 
 			//fpsGraph.Update(fpsTime);
+
+			if (G.keyboardState.IsKeyDown(Keys.F11))
+				G.Serialize(ref fs);
+			if(G.keyboardState.IsKeyDown(Keys.F12))
+				G.Deserialize(ref fs);
+
 
 			base.Update(gameTime);
 		}

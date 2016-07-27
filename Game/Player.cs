@@ -12,44 +12,58 @@ using Microsoft.Xna.Framework;
 
 class Player
 {
-	public Fixture leg;
+	Body leg;
 	public Body body;
 	public int isTouching = 0;
 	public Body side;
 
 	public Player(World world, Body body)
 	{
-		leg = FixtureFactory.AttachRectangle(ConvertUnits.ToSimUnits(100-4), ConvertUnits.ToSimUnits(1), 1f, new Vector2(0, ConvertUnits.ToSimUnits(32+16+1)), body, false);
-		leg.IsSensor = true;
-		leg.OnCollision = collision;
-		leg.OnSeparation = seperation;
+		
 		this.body = body;
-		body.FixedRotation = true;
-		body.SleepingAllowed = false;
-		body.Friction = 0.8f;
-		body.Mass = 1;
+		this.body.FixedRotation = true;
+		this.body.SleepingAllowed = false;
+		this.body.Friction = 1f;
+		this.body.Mass = 1;
 
-		side = BodyFactory.CreateRectangle(world, ConvertUnits.ToSimUnits(102), ConvertUnits.ToSimUnits(10), 1);
+		side = BodyFactory.CreateRectangle(world, ConvertUnits.ToSimUnits(100 + 8), ConvertUnits.ToSimUnits(10), 1);
+		
 		side.IsStatic = false;
 		side.GravityScale = 0;
 		side.Mass = 0;
 		side.Friction = 0;
+		//side.FixedRotation = true;
 		//leftSide.IgnoreCollisionWith(body);
 		side.SleepingAllowed = false;
 
+		//world.Step(0);
+
 		//Joint j = new Jo
-		JointFactory.CreateWeldJoint(world, body, side, body.Position, body.Position);
+		var j = JointFactory.CreateWeldJoint(world, this.body, side, this.body.Position, this.body.Position);
+		leg = BodyFactory.CreateRectangle(world, ConvertUnits.ToSimUnits(100 - 4), ConvertUnits.ToSimUnits(1), 1f);
+		leg.IsSensor = true;
+		leg.OnCollision += collision;
+		leg.OnSeparation += seperation;
+
+		leg.IsStatic = false;
+		leg.GravityScale = 0;
+		leg.Mass = 0;
+		leg.Friction = 0;
+		leg.FixedRotation = true;
+		leg.IgnoreCollisionWith(body);
+		leg.SleepingAllowed = false;
+
+		var j2 = JointFactory.CreateWeldJoint(world, side, leg, this.body.Position, this.body.Position - new Vector2(0, ConvertUnits.ToSimUnits(32 + 16 + 1)));
+		world.Step(0);
 	}
 	bool collision(Fixture a, Fixture b, Contact contact)
 	{
 		isTouching++;
-		a.UserData = true;
 		return true;
 	}
 	void seperation(Fixture a, Fixture b)
 	{
 		isTouching--;
-		a.UserData = false;
 	}
 }
 
@@ -83,9 +97,6 @@ class PlayerSystem : ComponentSystem<Player>, ISysUpdateable
 				moving = true;
 			}
 
-			
-
-			var isTouching = player.leg.UserData as bool?;
 			if(keyState.IsKeyDown(Keys.Space) && player.isTouching > 0)
 			{
 				vel.Y = -ConvertUnits.ToSimUnits(500);

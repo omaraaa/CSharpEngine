@@ -109,6 +109,7 @@ namespace CS.Components
 		Vector2 scale;
 		public Vector2 origin;
 		public Rectangle textureRect;
+		public Rectangle srcRect;
 
 		public Texture2(Global G, String textureString, float layer = 0.9f)
 		{
@@ -120,13 +121,15 @@ namespace CS.Components
 
 			origin = new Vector2(texture.Width / 2f, texture.Height / 2f);
 			textureRect = new Rectangle(0, 0, texture.Width, texture.Height);
-			
+			srcRect = new Rectangle(0, 0, texture.Width, texture.Height);
+
+
 		}
 
 		public void Render(SpriteBatch batch, Vector2 position, float rotation = 0)
 		{
 			position += offset;
-			batch.Draw(texture, position: position, scale: scale, layerDepth: layerDepth, rotation: rotation, origin: origin);
+			batch.Draw(texture, position: position, sourceRectangle:srcRect, scale: scale, layerDepth: layerDepth, rotation: rotation, origin: origin);
 		}
 
 		public void setScale(float x, float y)
@@ -134,6 +137,22 @@ namespace CS.Components
 			scale = new Vector2(x, y);
 			textureRect.Width = (int) ((float) texture.Width * x);
 			textureRect.Height = (int) ((float) texture.Height * y);
+		}
+
+		public int Width
+		{
+			get
+			{
+				return texture.Width;
+			}
+		}
+
+		public int Height
+		{
+			get
+			{
+				return texture.Height;
+			}
 		}
 	}
 
@@ -205,8 +224,8 @@ namespace CS.Components
 			if (transform.ContainsEntity(id, ref transfromIndex))
 			{
 				var transformC = transform.getComponent(transfromIndex);
-				rect.X = (int)(transformC.position.X - rect.Width/2);
-				rect.Y = (int)(transformC.position.Y - rect.Height/2);
+				rect.X = (int)(transformC.position.X - rect.Width/2f + 8);
+				rect.Y = (int)(transformC.position.Y - rect.Height/2f + 8);
 			}
 
 			return rect;
@@ -266,8 +285,8 @@ namespace CS.Components
 						{
 							mhold = true;
 							heldEntity = e;
-							offset.X = mx - rect.X - rect.Width/2f;
-							offset.Y = my - rect.Y - rect.Width/2f;
+							offset.X = mx - rect.X - rect.Width/2f + 8;
+							offset.Y = my - rect.Y - rect.Width/2f + 8;
 						}
 					}
 				}

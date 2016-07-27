@@ -28,14 +28,14 @@ namespace CS.Components
 			var body = new Body(sys.world);
 			body.BodyType = bodytype;
 			//body.Awake = false;
-			body.SleepingAllowed = true;
-			//body.FixedRotation = true;
+			//body.SleepingAllowed = true;
+			body.FixedRotation = true;
 			if(bodytype == BodyType.Dynamic || bodytype == BodyType.Kinematic)
 			FixtureFactory.AttachCircle(ConvertUnits.ToSimUnits( Math.Min(width, height))/2, 1f, body);
 			else
 			FixtureFactory.AttachRectangle(ConvertUnits.ToSimUnits(width), ConvertUnits.ToSimUnits(height), 0.1f, Vector2.Zero, body);
 			//body.Restitution = 1f;
-			body.Friction = 1f;
+			//body.Friction = 1f;
 
 			return body;
 		}
@@ -50,20 +50,20 @@ namespace CS.Components
 		DebugViewXNA debugView;
 		SpriteBatch batch;
 
-		public PhysicsSystem(State state) : base(state)
+		public PhysicsSystem(Global G, State state) : base(state)
 		{
 			transformSys = state.getSystem<TransformSystem>();
 			ConvertUnits.SetDisplayUnitToSimUnitRatio(64);
 			world = new World(new Vector2(0, ConvertUnits.ToSimUnits(2000)));
 			Settings.ContinuousPhysics = false;
-			Settings.VelocityIterations = 6;
-			Settings.PositionIterations = 2;
+			//Settings.VelocityIterations = 6;
+			//Settings.PositionIterations = 2;
 			//Settings.EnableDiagnostics.Equals(false);
 			Settings.DefaultFixtureIgnoreCCDWith = Category.All;
 			debugView = new DebugViewXNA(world);
-			debugView.LoadContent(state.G.game.GraphicsDevice, state.G.game.Content);
+			debugView.LoadContent(G.game.GraphicsDevice, G.game.Content);
 			debugView.Enabled = true;
-			batch = new SpriteBatch(state.G.game.GraphicsDevice);
+			batch = new SpriteBatch(G.game.GraphicsDevice);
 		}
 
 		public SpriteBatch Batch

@@ -1,5 +1,8 @@
 ﻿using System.Collections.Generic;
 using System;
+using System.IO;
+using System.Runtime.Serialization.Formatters.Binary;
+using System.Runtime.Serialization;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Input.Touch;
@@ -7,6 +10,7 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace CS
 {
+
 	abstract class BaseSystem
 	{
 		public State _state;
@@ -125,7 +129,7 @@ namespace CS
 	}
 
 	[Serializable()]
-	class State
+	class State : ISerializable
 	{
 		private BaseSystem[] systems;
 		private uint[] updatableIndexes;
@@ -133,6 +137,7 @@ namespace CS
 
 		public int[][] entitiesIndexes;
 
+		[NonSerialized]
 		public Global G;
 
 		public State(Global G)
@@ -229,6 +234,27 @@ namespace CS
 
 			return null;
 		}
+
+		protected State(SerializationInfo info, StreamingContext context)
+		{
+			renderableIndexes = (uint[]) info.GetValue("renderIndexes", typeof(uint[]));
+		}
+
+		public void GetObjectData(SerializationInfo info, StreamingContext context)
+		{
+			info.AddValue("renderIndexes", renderableIndexes);
+
+		}
+
+		internal void Serialize(FileStream fs)
+		{
+			
+		}
+
+		internal void Deserialize(FileStream fs)
+		{
+			throw new NotImplementedException();
+		}
 	}
 
 	delegate void FunctionDelegate(ref State state, uint id);
@@ -239,7 +265,6 @@ namespace CS
 	[Serializable()]
 	class Global
 	{
-		private Dictionary<String, FunctionDelegate> functions;
 		private Dictionary<String, Texture2D> textures;
 		private State[] activeStates;
 		public Game game;
@@ -253,6 +278,7 @@ namespace CS
 		{
 			game = g;
 			textures = new Dictionary<String, Texture2D>();
+			activeStates = new State[0];
 		}
 
 		public void Update(GameTime gametime)
@@ -287,6 +313,11 @@ namespace CS
 			activeStates[activeStates.Length-1] = s;
 		}
 
+		private void loadTexture(String name)
+		{
+			textures[name] = game.Content.Load<Texture2D>(name);
+		}
+
 		public Texture2D getTexture(String name)
 		{
 			if (textures.ContainsKey(name))
@@ -294,6 +325,49 @@ namespace CS
 			else
 			{
 				return textures[name] = game.Content.Load<Texture2D>(name);
+			}
+		}
+
+		public void Serialize(ref FileStream fs)
+		{
+			fs.Position = 0;
+			BinaryFormatter formatter = new BinaryFormatter();
+
+			//serialize textures names
+			formatter.Serialize(fs, textures.Count);
+			foreach(var pair in textures)
+			{ 
+				formatter.Serialize(fs, pair.Key);
+			}
+
+			//States
+			formatter.Serialize(fs, activeStates.Length);
+			foreach(State s in activeStates)
+			{
+				s.Serialize(fs);
+			}
+		}
+
+		public void Deserialize(ref FileStream fs)
+		{
+			fs.Position = 0;
+			BinaryFormatter formatter = new BinaryFormatter();
+
+			//load textures
+			var texturesCount = (int) formatter.Deserialize(fs);
+			for(int i = 0; i < texturesCount; ++i)
+			{
+				var tName = (String) formatter.Deserialize(fs);
+				loadTexture(tName);
+			}
+
+			//States
+			var stateCount = (int)formatter.Deserialize(fs);
+			for(int i = 0; i < stateCount; ++i)
+			{
+				State s = new State(this);
+				s.Deserialize(fs);
+				ActivateState(s);
 			}
 		}
 	}

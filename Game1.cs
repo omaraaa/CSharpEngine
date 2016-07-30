@@ -82,10 +82,10 @@ namespace TankComProject
 			fs = new FileStream("data", FileMode.OpenOrCreate, FileAccess.ReadWrite);
 
 			// TODO: Add your initialization logic here
-			graphics.PreferredBackBufferWidth = GraphicsDevice.DisplayMode.Width;
-			graphics.PreferredBackBufferHeight = GraphicsDevice.DisplayMode.Height;
+		//	graphics.PreferredBackBufferWidth = GraphicsDevice.DisplayMode.Width;
+			//graphics.PreferredBackBufferHeight = GraphicsDevice.DisplayMode.Height;
 			graphics.SynchronizeWithVerticalRetrace = false;
-			graphics.IsFullScreen = true;
+			//graphics.IsFullScreen = true;
 			graphics.ApplyChanges();
 
 			fpsGraph = new DebugGraph(GraphicsDevice, new Rectangle(0, 50, 200, 25), 100, 60);
@@ -94,9 +94,9 @@ namespace TankComProject
 
 			state = new State(G);
 			transSys = new TransformSystem(state);
-			physics = new PhysicsSystem(G, state);
-			textureSys = new TextureSystem(state, GraphicsDevice, transSys, physics);
-			mousesys = new MouseFollowSystem(state, transSys);
+			physics = new PhysicsSystem(state);
+			textureSys = new TextureSystem(state);
+			mousesys = new MouseFollowSystem(state);
 			ddSys = new DragAndDropSystem(state);
 			collSys = new CollisionSystem(state);
 			PlayerSystem playerSys = new PlayerSystem(state);
@@ -135,6 +135,7 @@ namespace TankComProject
 					FarseerPhysics.ConvertUnits.ToSimUnits(textC.textureRect.Height/2f)),
 					1f);
 				p2.IsStatic = false;
+				p2.SleepingAllowed = false;
 				physics.AddComponent(eid, p2);
 				var player = new Player(physics.world, p2);
 				playerSys.AddComponent(eid, player);
@@ -271,9 +272,9 @@ namespace TankComProject
 			//fpsGraph.Update(fpsTime);
 
 			if (G.keyboardState.IsKeyDown(Keys.F11))
-				G.Serialize(ref fs);
+				state.Serialize(fs, new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter());
 			if(G.keyboardState.IsKeyDown(Keys.F12))
-				G.Deserialize(ref fs);
+				state.Deserialize(fs, new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter());
 
 
 			base.Update(gameTime);

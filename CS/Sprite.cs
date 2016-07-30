@@ -23,8 +23,13 @@ namespace CS.Components
 	*/
 	class SpriteSystem : ComponentSystem<Sprite>, ISysUpdateable
 	{
-		public SpriteSystem(State state) : base(state)
+		public SpriteSystem(State state) : base(state, "SpriteSystem")
 		{
+		}
+
+		public override BaseSystem DeserializeConstructor(State state)
+		{
+			throw new NotImplementedException();
 		}
 
 		public void Update(Global G)

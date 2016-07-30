@@ -1,6 +1,8 @@
 ﻿using System.Collections.Generic;
 using System.Collections;
 using System;
+using System.IO;
+using System.Runtime.Serialization.Formatters.Binary;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Input.Touch;
@@ -31,7 +33,7 @@ namespace CS.Components
 	}
 	class TransformSystem : ComponentSystem<Transform>, ISysUpdateable
 	{
-		public TransformSystem(State state) : base(state)
+		public TransformSystem(State state) : base(state, "Transform")
 		{
 
 		}
@@ -52,14 +54,46 @@ namespace CS.Components
 				t.deltaPos = t.position;
 			}
 		}
+
+		public override BaseSystem DeserializeConstructor(State state)
+		{
+			return new TransformSystem(state);
+		}
+
+		public override void Serialize(FileStream fs, BinaryFormatter formatter)
+		{
+			base.Serialize(fs, formatter);
+			foreach (Transform t in components)
+			{
+				formatter.Serialize(fs, t.position.X);
+				formatter.Serialize(fs, t.position.Y);
+				formatter.Serialize(fs, t.deltaPos.Y);
+				formatter.Serialize(fs, t.deltaPos.Y);
+			}
+		}
+
+		public override void Deserialize(FileStream fs, BinaryFormatter formatter)
+		{
+			base.Deserialize(fs, formatter);
+			components = new Transform[size];
+			for(int i = 0; i < size; ++i)
+			{
+				Transform t = new Transform();
+				t.position.X = (float) formatter.Deserialize(fs);
+				t.position.Y = (float) formatter.Deserialize(fs);
+				t.deltaPos.X = (float) formatter.Deserialize(fs);
+				t.deltaPos.Y = (float) formatter.Deserialize(fs);
+				components[i] = t;
+			}
+		}
 	}
 
 	class MouseFollowSystem : BaseSystem, ISysUpdateable
 	{
 		private TransformSystem transform;
-		public MouseFollowSystem(State state, TransformSystem transSys) : base(state)
+		public MouseFollowSystem(State state) : base(state, "MouseFollow")
 		{
-			transform = transSys;
+			transform = state.getSystem<TransformSystem>();
 		}
 
 		private uint updateindex;
@@ -99,14 +133,20 @@ namespace CS.Components
 				transformC.position = pos;
 			}
 		}
+
+		public override BaseSystem DeserializeConstructor(State state)
+		{
+			return new MouseFollowSystem(state);
+		}
 	}
 
 	class Texture2
 	{
 		Texture2D texture;
-		float layerDepth;
-		Vector2 offset;
-		Vector2 scale;
+		public String textureName;
+		public float layerDepth;
+		public Vector2 offset;
+		public Vector2 scale;
 		public Vector2 origin;
 		public Rectangle textureRect;
 		public Rectangle srcRect;
@@ -114,6 +154,7 @@ namespace CS.Components
 		public Texture2(Global G, String textureString, float layer = 0.9f)
 		{
 			this.texture = G.getTexture(textureString);
+			textureName = textureString;
 			this.layerDepth = layer;
 			this.offset = new Vector2(0, 0);
 
@@ -154,17 +195,19 @@ namespace CS.Components
 				return texture.Height;
 			}
 		}
+
+		
 	}
 
 	class TextureSystem : ComponentSystem<Texture2>, ISysRenderable
 	{
 		TransformSystem transform;
 		PhysicsSystem physics;
-		public TextureSystem(State state, GraphicsDevice graphicsDevice, TransformSystem transform, PhysicsSystem physics) : base(state)
+		public TextureSystem(State state) : base(state, "Texture")
 		{
-			_batch = new SpriteBatch(graphicsDevice);
-			this.transform = transform;
-			this.physics = physics;
+			_batch = new SpriteBatch(state.G.game.GraphicsDevice);
+			this.transform = state.getSystem<TransformSystem>();
+			this.physics = state.getSystem<PhysicsSystem>();
 		}
 
 		SpriteBatch _batch;
@@ -230,6 +273,62 @@ namespace CS.Components
 
 			return rect;
 		}
+
+		public override BaseSystem DeserializeConstructor(State state)
+		{
+			return new TextureSystem(state);
+		}
+
+		override public void Serialize(FileStream fs, BinaryFormatter formatter)
+		{
+			base.Serialize(fs, formatter);
+			foreach(Texture2 t in components)
+			{
+				formatter.Serialize(fs, t.textureName);
+				formatter.Serialize(fs, t.layerDepth);
+				formatter.Serialize(fs, t.offset.X);
+				formatter.Serialize(fs, t.offset.Y);
+				formatter.Serialize(fs, t.scale.X);
+				formatter.Serialize(fs, t.scale.Y);
+				formatter.Serialize(fs, t.origin.X);
+				formatter.Serialize(fs, t.origin.Y);
+				formatter.Serialize(fs, t.textureRect.X);
+				formatter.Serialize(fs, t.textureRect.Y);
+				formatter.Serialize(fs, t.textureRect.Width);
+				formatter.Serialize(fs, t.textureRect.Height);
+				formatter.Serialize(fs, t.srcRect.X);
+				formatter.Serialize(fs, t.srcRect.Y);
+				formatter.Serialize(fs, t.srcRect.Width);
+				formatter.Serialize(fs, t.srcRect.Height);
+			}
+		}
+
+		override public void Deserialize(FileStream fs, BinaryFormatter formatter)
+		{
+			base.Deserialize(fs, formatter);
+			components = new Texture2[size];
+			for(int i = 0; i < size; ++i)
+			{
+				var name = (String) formatter.Deserialize(fs);
+				var layer = (float)formatter.Deserialize(fs);
+				Texture2 t = new Texture2(_state.G, name, layer);
+				t.offset.X = (float) formatter.Deserialize(fs);
+				t.offset.Y = (float) formatter.Deserialize(fs);
+				t.scale.X = (float) formatter.Deserialize(fs);
+				t.scale.Y = (float) formatter.Deserialize(fs);
+				t.origin.X = (float) formatter.Deserialize(fs);
+				t.origin.Y = (float) formatter.Deserialize(fs);
+				t.textureRect.X = (int) formatter.Deserialize(fs);
+				t.textureRect.Y = (int) formatter.Deserialize(fs);
+				t.textureRect.Width = (int) formatter.Deserialize(fs);
+				t.textureRect.Height = (int) formatter.Deserialize(fs);
+				t.srcRect.X = (int) formatter.Deserialize(fs);
+				t.srcRect.Y = (int) formatter.Deserialize(fs);
+				t.srcRect.Width = (int) formatter.Deserialize(fs);
+				t.srcRect.Height = (int) formatter.Deserialize(fs);
+				components[i] = t;
+			}
+		}
 	}
 
 	class DragAndDropSystem : BaseSystem, ISysUpdateable
@@ -241,7 +340,7 @@ namespace CS.Components
 		TransformSystem transfromSys;
 		PhysicsSystem physics;
 
-		public DragAndDropSystem(State state) : base(state)
+		public DragAndDropSystem(State state) : base(state, "DragAndDrop")
 		{
 			offset = new Vector2(0, 0);
 			textureSys = _state.getSystem<TextureSystem>();
@@ -331,6 +430,11 @@ namespace CS.Components
 				}
 			}
 
+		}
+
+		public override BaseSystem DeserializeConstructor(State state)
+		{
+			return new DragAndDropSystem(state);
 		}
 	}
 
@@ -446,7 +550,7 @@ namespace CS.Components
 
 		private World world;
 
-		public CollisionSystem(State state) : base(state)
+		public CollisionSystem(State state) : base(state, "BasicCollision")
 		{
 			transformSys = state.getSystem<TransformSystem>();
 			world = new World(Vector2.Zero);
@@ -604,7 +708,10 @@ namespace CS.Components
 			return true;
 		}
 
-
+		public override BaseSystem DeserializeConstructor(State state)
+		{
+			return new CollisionSystem(state);
+		}
 	}
 }
 

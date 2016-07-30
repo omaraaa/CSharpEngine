@@ -21,14 +21,17 @@ namespace CS
 
 		public int updateIndex = -1;
 		public int renderIndex = -1;
+		public String name;
 
-		public BaseSystem(State state)
+		public BaseSystem(State state, String name)
 		{
 			_state = state;
 			systemIndex = state.RegisterSystem(this);
 			entityIDs = new int[0];
 			freeIndexes = new int[0];
 			size = 0;
+			this.name = name;
+			state.G.RegisterSystemSerialization(name, DeserializeConstructor);
 		}
 
 		public int AddEntity(int id)
@@ -80,6 +83,24 @@ namespace CS
 				return false;
 		}
 
+		virtual public void Serialize(FileStream fs, BinaryFormatter formatter)
+		{
+			formatter.Serialize(fs, size);
+			foreach(var e in entityIDs)
+			{
+				formatter.Serialize(fs, e);
+			}
+		}
+
+		virtual public void Deserialize(FileStream fs, BinaryFormatter formatter)
+		{
+			size = (int) formatter.Deserialize(fs);
+			entityIDs = new int[size];
+			for (int i = 0; i < size; ++i)
+				entityIDs[i] = (int) formatter.Deserialize(fs);
+		}
+
+		abstract public BaseSystem DeserializeConstructor(State state);
 	}
 
 	interface ISysUpdateable
@@ -105,7 +126,7 @@ namespace CS
 
 		protected uint cachedComponent;
 
-		public ComponentSystem(State state) : base(state)
+		public ComponentSystem(State state, String name) : base(state, name)
 		{
 			components = new T[0];
 			size = 0;
@@ -153,7 +174,7 @@ namespace CS
 		{
 			var size = systems.Length;
 			size++;
-			Array.Resize(ref systems, size + 1);
+			Array.Resize(ref systems, size);
 
 			systems[size - 1] = system;
 
@@ -246,20 +267,55 @@ namespace CS
 
 		}
 
-		internal void Serialize(FileStream fs)
+		public void Serialize(FileStream fs, BinaryFormatter formatter)
 		{
-			
+			formatter.Serialize(fs, entitiesIndexes.Length);
+			for(int i = 0; i < entitiesIndexes.Length; ++i)
+			{
+				formatter.Serialize(fs, entitiesIndexes[i].Length);
+				foreach (int index in entitiesIndexes[i])
+					formatter.Serialize(fs, index);
+			}
+
+			formatter.Serialize(fs, systems.Length);
+			for(int i = 0; i < systems.Length; ++i)
+			{
+				formatter.Serialize(fs, systems[i].name);
+				systems[i].Serialize(fs, formatter);
+			}
 		}
 
-		internal void Deserialize(FileStream fs)
+		public void Deserialize(FileStream fs, BinaryFormatter formatter)
 		{
-			throw new NotImplementedException();
+			fs.Position = 0;
+
+			var entitiesSize = (int) formatter.Deserialize(fs);
+			entitiesIndexes = new int[entitiesSize][];
+			for (int i = 0; i < entitiesIndexes.Length; ++i)
+			{
+				var s =	(int) formatter.Deserialize(fs);
+				entitiesIndexes[i] = new int[s];
+				for (int j = 0; j < s; ++j)
+					entitiesIndexes[i][j] =  (int) formatter.Deserialize(fs);
+			}
+
+			var size = (int) formatter.Deserialize(fs);
+			//systems = new BaseSystem[size];
+			for(int i = 0; i < size; ++i)
+			{
+				String name = (String) formatter.Deserialize(fs);
+				if (G.systemsConstructors.ContainsKey(name))
+				{
+					G.systemsConstructors[name](this);
+					systems[i].Deserialize(fs, formatter);
+				}
+			}
 		}
 	}
 
 	delegate void FunctionDelegate(ref State state, uint id);
 
-	
+	delegate BaseSystem DeserializationConstructor(State state);
 
 
 	[Serializable()]
@@ -273,12 +329,14 @@ namespace CS
 		public MouseState mouseState;
 		public TouchCollection touchCollection;
 		public KeyboardState keyboardState;
+		public Dictionary<String, DeserializationConstructor> systemsConstructors;
 
 		public Global(Game g)
 		{
 			game = g;
 			textures = new Dictionary<String, Texture2D>();
 			activeStates = new State[0];
+			systemsConstructors = new Dictionary<String, DeserializationConstructor>();
 		}
 
 		public void Update(GameTime gametime)
@@ -344,7 +402,7 @@ namespace CS
 			formatter.Serialize(fs, activeStates.Length);
 			foreach(State s in activeStates)
 			{
-				s.Serialize(fs);
+				s.Serialize(fs, formatter);
 			}
 		}
 
@@ -363,12 +421,18 @@ namespace CS
 
 			//States
 			var stateCount = (int)formatter.Deserialize(fs);
+			activeStates = new State[stateCount];
 			for(int i = 0; i < stateCount; ++i)
 			{
 				State s = new State(this);
-				s.Deserialize(fs);
-				ActivateState(s);
+				s.Deserialize(fs, formatter);
+				activeStates[i] = s;
 			}
+		}
+
+		public void RegisterSystemSerialization(String name, DeserializationConstructor constructor)
+		{
+			systemsConstructors[name] = constructor;
 		}
 	}
 }

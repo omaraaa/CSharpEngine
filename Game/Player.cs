@@ -9,10 +9,12 @@ using FarseerPhysics;
 using FarseerPhysics.Factories;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework;
+using System.IO;
+using System.Runtime.Serialization.Formatters.Binary;
 
 class Player
 {
-	Body leg;
+	public Body leg;
 	public Body body;
 	public int isTouching = 0;
 	public Body side;
@@ -56,6 +58,19 @@ class Player
 		var j2 = JointFactory.CreateWeldJoint(world, side, leg, this.body.Position, this.body.Position - new Vector2(0, ConvertUnits.ToSimUnits(32 + 16 + 1)));
 		world.Step(0);
 	}
+
+	public Player(World world, int b, int s, int l)
+	{
+		this.body = world.BodyList[b];
+		this.side = world.BodyList[s];
+		this.leg = world.BodyList[l];
+		leg.IsSensor = true;
+		leg.OnCollision += collision;
+		leg.OnSeparation += seperation;
+
+		leg.IgnoreCollisionWith(body);
+		leg.SleepingAllowed = false;
+	}
 	bool collision(Fixture a, Fixture b, Contact contact)
 	{
 		isTouching++;
@@ -69,8 +84,15 @@ class Player
 
 class PlayerSystem : ComponentSystem<Player>, ISysUpdateable
 {
-	public PlayerSystem(State state) : base(state)
+	PhysicsSystem physics;
+	public PlayerSystem(State state) : base(state, "Player")
 	{
+		physics = state.getSystem<PhysicsSystem>();
+	}
+
+	public override BaseSystem DeserializeConstructor(State state)
+	{
+		return new PlayerSystem(state);
 	}
 
 	public void Update(Global G)
@@ -106,6 +128,34 @@ class PlayerSystem : ComponentSystem<Player>, ISysUpdateable
 
 			player.body.LinearVelocity = vel;
 			//player.side.Position = player.body.Position;
+		}
+	}
+
+	public override void Serialize(FileStream fs, BinaryFormatter formatter)
+	{
+		base.Serialize(fs, formatter);
+		foreach(Player p in components)
+		{
+			formatter.Serialize(fs, p.body.BodyId);
+			formatter.Serialize(fs, p.side.BodyId);
+			formatter.Serialize(fs, p.leg.BodyId);
+		}
+	}
+
+	public override void Deserialize(FileStream fs, BinaryFormatter formatter)
+	{
+		base.Deserialize(fs, formatter);
+		components = new Player[size];
+		for(int i = 0; i < size; ++i)
+		{
+			var body = (int) formatter.Deserialize(fs);
+			var side = (int) formatter.Deserialize(fs);
+			var leg = (int) formatter.Deserialize(fs);
+
+			Player p = new Player(physics.world, body, side, leg);
+			
+
+			components[i] = p;
 		}
 	}
 }

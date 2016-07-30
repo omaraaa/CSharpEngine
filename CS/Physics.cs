@@ -17,6 +17,8 @@ using FarseerPhysics.Factories;
 using FarseerPhysics.Controllers;
 using FarseerPhysics;
 using FarseerPhysics.DebugView;
+using System.IO;
+using System.Runtime.Serialization.Formatters.Binary;
 
 namespace CS.Components
 {
@@ -50,8 +52,9 @@ namespace CS.Components
 		DebugViewXNA debugView;
 		SpriteBatch batch;
 
-		public PhysicsSystem(Global G, State state) : base(state)
+		public PhysicsSystem(State state) : base(state, "FarseerPhysics")
 		{
+			var G = state.G;
 			transformSys = state.getSystem<TransformSystem>();
 			ConvertUnits.SetDisplayUnitToSimUnitRatio(64);
 			world = new World(new Vector2(0, ConvertUnits.ToSimUnits(2000)));
@@ -124,6 +127,39 @@ namespace CS.Components
 				}
 
 				}
+		}
+
+		public override BaseSystem DeserializeConstructor(State state)
+		{
+			return new PhysicsSystem(state);
+		}
+
+		public override void Serialize(FileStream fs, BinaryFormatter formatter)
+		{
+			base.Serialize(fs, formatter);
+
+			WorldSerializer.Serialize(world, fs.Name + "Farseer.xml");
+			foreach(Body b in components)
+			{
+				formatter.Serialize(fs, b.BodyId);
+			}
+		}
+
+		public override void Deserialize(FileStream fs, BinaryFormatter formatter)
+		{
+			base.Deserialize(fs, formatter);
+
+			world = WorldSerializer.Deserialize(fs.Name + "Farseer.xml");
+			components = new Body[size];
+			for(int i = 0; i < size; ++i)
+			{
+				var id = (int) formatter.Deserialize(fs);
+				components[i] = world.BodyList[id];
+			}
+
+			debugView = new DebugViewXNA(world);
+			debugView.LoadContent(_state.G.game.GraphicsDevice, _state.G.game.Content);
+			debugView.Enabled = true;
 		}
 	}
 }

@@ -269,6 +269,7 @@ namespace CS
 
 		public void Serialize(FileStream fs, BinaryFormatter formatter)
 		{
+
 			formatter.Serialize(fs, entitiesIndexes.Length);
 			for(int i = 0; i < entitiesIndexes.Length; ++i)
 			{
@@ -287,9 +288,8 @@ namespace CS
 
 		public void Deserialize(FileStream fs, BinaryFormatter formatter)
 		{
-			fs.Position = 0;
 
-			var entitiesSize = (int) formatter.Deserialize(fs);
+			int entitiesSize = (int) formatter.Deserialize(fs);
 			entitiesIndexes = new int[entitiesSize][];
 			for (int i = 0; i < entitiesIndexes.Length; ++i)
 			{
@@ -300,13 +300,16 @@ namespace CS
 			}
 
 			var size = (int) formatter.Deserialize(fs);
-			//systems = new BaseSystem[size];
 			for(int i = 0; i < size; ++i)
 			{
 				String name = (String) formatter.Deserialize(fs);
+				bool sameName = false;
+				if (systems.Length > i && systems[i] != null && systems[i].name == name)
+					sameName = true;
 				if (G.systemsConstructors.ContainsKey(name))
 				{
-					G.systemsConstructors[name](this);
+					if(!sameName)
+						G.systemsConstructors[name](this);
 					systems[i].Deserialize(fs, formatter);
 				}
 			}
@@ -364,10 +367,8 @@ namespace CS
 
 		public void ActivateState(State s)
 		{
-			if (activeStates != null)
-				Array.Resize(ref activeStates, activeStates.Length + 1);
-			else
-				activeStates = new State[1];
+			Array.Resize(ref activeStates, activeStates.Length + 1);
+
 			activeStates[activeStates.Length-1] = s;
 		}
 
@@ -386,17 +387,17 @@ namespace CS
 			}
 		}
 
-		public void Serialize(ref FileStream fs)
+		public void Serialize(FileStream fs)
 		{
 			fs.Position = 0;
 			BinaryFormatter formatter = new BinaryFormatter();
 
 			//serialize textures names
-			formatter.Serialize(fs, textures.Count);
+			/*formatter.Serialize(fs, textures.Count);
 			foreach(var pair in textures)
 			{ 
 				formatter.Serialize(fs, pair.Key);
-			}
+			}*/
 
 			//States
 			formatter.Serialize(fs, activeStates.Length);
@@ -406,25 +407,30 @@ namespace CS
 			}
 		}
 
-		public void Deserialize(ref FileStream fs)
+		public void Deserialize(FileStream fs)
 		{
 			fs.Position = 0;
 			BinaryFormatter formatter = new BinaryFormatter();
 
 			//load textures
-			var texturesCount = (int) formatter.Deserialize(fs);
+			/*var texturesCount = (int) formatter.Deserialize(fs);
 			for(int i = 0; i < texturesCount; ++i)
 			{
 				var tName = (String) formatter.Deserialize(fs);
 				loadTexture(tName);
-			}
+			}*/
 
 			//States
 			var stateCount = (int)formatter.Deserialize(fs);
-			activeStates = new State[stateCount];
+
+			if (activeStates.Length < stateCount)
+				Array.Resize(ref activeStates, stateCount);
+
 			for(int i = 0; i < stateCount; ++i)
 			{
-				State s = new State(this);
+				State s = activeStates[i];
+				if (s == null)
+					s = new State(this);
 				s.Deserialize(fs, formatter);
 				activeStates[i] = s;
 			}

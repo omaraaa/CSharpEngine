@@ -10,12 +10,26 @@ using CS;
 
 namespace CS.Components
 {
+
+	struct Animation
+	{
+		String AnimationName;
+		float speed;
+		int index;
+		int[] indexs;
+	}
+
 	/*
 	 * The sprite class takes a texture and changes it's source rectangle to match specific animation frame
 	*/
 	class Sprite
 	{
+		public String textureName;
+		public Animation currentAnimation;
+		public Sprite(String textureName)
+		{
 
+		}
 	}
 
 	/*

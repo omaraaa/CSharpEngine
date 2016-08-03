@@ -124,20 +124,12 @@ namespace TankComProject
 			}
 			{
 				Image img = new Image(state, "cursor", new Vector2(0, 0), 0.1f);
-				Image img2 = new Image(state, "landscape1", new Vector2(10, 10));
+				Image img2 = new Image(state, "landscape1", new Vector2(100, 100));
 				eid = img2.id;
 				ddSys.AddEntity(eid);
 				mousesys.AddEntity(img.id);
 				var textC = textureSys.getComponent(img2.textureIndex);
-				var p2 = 
-					FarseerPhysics.Factories.BodyFactory.CreateCircle(physics.world,
-					Math.Min(FarseerPhysics.ConvertUnits.ToSimUnits( textC.textureRect.Width/2f),
-					FarseerPhysics.ConvertUnits.ToSimUnits(textC.textureRect.Height/2f)),
-					1f);
-				p2.IsStatic = false;
-				p2.SleepingAllowed = false;
-				physics.AddComponent(eid, p2);
-				var player = new Player(physics.world, p2);
+				var player = new Player(eid, physics, textC.textureRect);
 				playerSys.AddComponent(eid, player);
 			}
 
@@ -249,8 +241,8 @@ namespace TankComProject
 				Debug.Assert(!float.IsNaN(t.position.X) && !float.IsNaN(t.position.Y));
 				transSys.AddComponent(e, t);
 
-				Texture2 texture = new Texture2(G, "SomeGuy1");
-				texture.setScale(1f, 1f);
+				Texture2 texture = new Texture2(G, "BlockUnit");
+				texture.setScale(2f, 2f);
 				//t.position.X += r.Next() % 3;
 				textureSys.AddComponent(e, texture);
 				ddSys.AddEntity(e);
@@ -272,9 +264,9 @@ namespace TankComProject
 			//fpsGraph.Update(fpsTime);
 
 			if (G.keyboardState.IsKeyDown(Keys.F11))
-				state.Serialize(fs, new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter());
+				G.Serialize(fs);
 			if(G.keyboardState.IsKeyDown(Keys.F12))
-				state.Deserialize(fs, new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter());
+				G.Deserialize(fs);
 
 
 			base.Update(gameTime);

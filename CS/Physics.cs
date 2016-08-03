@@ -8,6 +8,7 @@ using Microsoft.Xna.Framework.Input.Touch;
 using Microsoft.Xna.Framework.Graphics;
 
 using CS;
+using CS.Util;
 
 using FarseerPhysics.Dynamics;
 using FarseerPhysics.Collision;
@@ -35,8 +36,8 @@ namespace CS.Components
 			if(bodytype == BodyType.Dynamic || bodytype == BodyType.Kinematic)
 			FixtureFactory.AttachCircle(ConvertUnits.ToSimUnits( Math.Min(width, height))/2, 1f, body);
 			else
-			FixtureFactory.AttachRectangle(ConvertUnits.ToSimUnits(width), ConvertUnits.ToSimUnits(height), 0.1f, Vector2.Zero, body);
-			//body.Restitution = 1f;
+			FixtureFactory.AttachRectangle(ConvertUnits.ToSimUnits(width), ConvertUnits.ToSimUnits(height), 1f, Vector2.Zero, body);
+			body.Restitution = 0f;
 			//body.Friction = 1f;
 
 			return body;
@@ -114,8 +115,8 @@ namespace CS.Components
 
 			for (int i = 0; i < size; ++i)
 			{
-				if (!components [i].Awake)
-					components [i].IsStatic = true;
+				//if (!components [i].Awake)
+				//	components [i].IsStatic = true;
 				if (entityIDs[i] == -1 || !components[i].Awake)
 					continue;
 
@@ -123,7 +124,7 @@ namespace CS.Components
 				if (index != -1)
 				{
 					var trans = transformSys.getComponent(index);
-					trans.position = ConvertUnits.ToDisplayUnits(components[i].Position);
+					trans.position = Vector2.LerpPrecise(ConvertUnits.ToDisplayUnits(components[i].Position), trans.deltaPos, G.dt);
 				}
 
 				}
@@ -139,9 +140,14 @@ namespace CS.Components
 			base.Serialize(fs, formatter);
 
 			WorldSerializer.Serialize(world, fs.Name + "Farseer.xml");
-			foreach(Body b in components)
+			for (int i = 0; i < world.BodyList.Count; ++i)
 			{
-				formatter.Serialize(fs, b.BodyId);
+				for(int j = 0; j < size; ++j)
+				{
+					if(components[j] == world.BodyList[i])
+						formatter.Serialize(fs, i);
+
+				}
 			}
 		}
 
@@ -149,6 +155,7 @@ namespace CS.Components
 		{
 			base.Deserialize(fs, formatter);
 
+			world = null;
 			world = WorldSerializer.Deserialize(fs.Name + "Farseer.xml");
 			components = new Body[size];
 			for(int i = 0; i < size; ++i)
@@ -156,10 +163,11 @@ namespace CS.Components
 				var id = (int) formatter.Deserialize(fs);
 				components[i] = world.BodyList[id];
 			}
-
+	
 			debugView = new DebugViewXNA(world);
 			debugView.LoadContent(_state.G.game.GraphicsDevice, _state.G.game.Content);
 			debugView.Enabled = true;
 		}
 	}
+
 }

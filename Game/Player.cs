@@ -14,62 +14,46 @@ using System.Runtime.Serialization.Formatters.Binary;
 
 class Player
 {
-	public Body leg;
+	public Fixture leg;
 	public Body body;
 	public int isTouching = 0;
-	public Body side;
+	public Fixture side;
 
-	public Player(World world, Body body)
+	public Player(int id, PhysicsSystem physics, Rectangle bounds)
 	{
-		
-		this.body = body;
+
+		this.body = new Body(physics.world);
 		this.body.FixedRotation = true;
 		this.body.SleepingAllowed = false;
-		this.body.Friction = 1f;
-		this.body.Mass = 1;
+		this.body.IsStatic = false;
+		this.body.Friction = 0.5f;
+		this.body.Restitution = 0;
+		physics.AddComponent(id, body);
 
-		side = BodyFactory.CreateRectangle(world, ConvertUnits.ToSimUnits(100 + 8), ConvertUnits.ToSimUnits(10), 1);
-		
-		side.IsStatic = false;
-		side.GravityScale = 0;
-		side.Mass = 0;
-		side.Friction = 0;
-		//side.FixedRotation = true;
-		//leftSide.IgnoreCollisionWith(body);
-		side.SleepingAllowed = false;
+		FixtureFactory.AttachCircle(ConvertUnits.ToSimUnits(bounds.Width / 3f), 1f, body, ConvertUnits.ToSimUnits(new Vector2(0, bounds.Height/2f - bounds.Width / 3f)));
 
-		//world.Step(0);
+		side = FixtureFactory.AttachRectangle(ConvertUnits.ToSimUnits(bounds.Width+ 2), ConvertUnits.ToSimUnits(bounds.Height/2), 1f,
+			ConvertUnits.ToSimUnits(new Vector2(0, -(bounds.Height/2f)/2f)), body);
+		side.Restitution = 0;
+		side.Friction = 0f;
 
-		//Joint j = new Jo
-		var j = JointFactory.CreateWeldJoint(world, this.body, side, this.body.Position, this.body.Position);
-		leg = BodyFactory.CreateRectangle(world, ConvertUnits.ToSimUnits(100 - 4), ConvertUnits.ToSimUnits(1), 1f);
+
+		leg = FixtureFactory.AttachRectangle(ConvertUnits.ToSimUnits(bounds.Width - 4), ConvertUnits.ToSimUnits(1), 0.001f, new Vector2(0, ConvertUnits.ToSimUnits(32 + 16 + 1)), body);
 		leg.IsSensor = true;
 		leg.OnCollision += collision;
 		leg.OnSeparation += seperation;
 
-		leg.IsStatic = false;
-		leg.GravityScale = 0;
-		leg.Mass = 0;
-		leg.Friction = 0;
-		leg.FixedRotation = true;
-		leg.IgnoreCollisionWith(body);
-		leg.SleepingAllowed = false;
-
-		var j2 = JointFactory.CreateWeldJoint(world, side, leg, this.body.Position, this.body.Position - new Vector2(0, ConvertUnits.ToSimUnits(32 + 16 + 1)));
-		world.Step(0);
 	}
 
-	public Player(World world, int b, int s, int l)
+	public Player(World world, int b)
 	{
 		this.body = world.BodyList[b];
-		this.side = world.BodyList[s];
-		this.leg = world.BodyList[l];
+		this.side = body.FixtureList[1];
+		this.leg = body.FixtureList[2];
 		leg.IsSensor = true;
 		leg.OnCollision += collision;
 		leg.OnSeparation += seperation;
 
-		leg.IgnoreCollisionWith(body);
-		leg.SleepingAllowed = false;
 	}
 	bool collision(Fixture a, Fixture b, Contact contact)
 	{
@@ -108,14 +92,14 @@ class PlayerSystem : ComponentSystem<Player>, ISysUpdateable
 			bool moving = false;
 			var speed = ConvertUnits.ToSimUnits(230);
 
-			if (keyState.IsKeyDown(Keys.A) && vel.X > -speed)
+			if (keyState.IsKeyDown(Keys.A))
 			{
-				vel.X += -speed;
+				vel.X = -speed;
 				moving = true;
 			}
-			if (keyState.IsKeyDown(Keys.D) && vel.X < speed)
+			if (keyState.IsKeyDown(Keys.D) )
 			{
-				vel.X += speed;
+				vel.X = speed;
 				moving = true;
 			}
 
@@ -134,11 +118,14 @@ class PlayerSystem : ComponentSystem<Player>, ISysUpdateable
 	public override void Serialize(FileStream fs, BinaryFormatter formatter)
 	{
 		base.Serialize(fs, formatter);
-		foreach(Player p in components)
+		for (int i = 0; i < physics.world.BodyList.Count; ++i)
 		{
-			formatter.Serialize(fs, p.body.BodyId);
-			formatter.Serialize(fs, p.side.BodyId);
-			formatter.Serialize(fs, p.leg.BodyId);
+			var b = physics.world.BodyList[i];
+			foreach (Player p in components)
+			{
+				if (b.BodyId == p.body.BodyId)
+					formatter.Serialize(fs, i);
+			}
 		}
 	}
 
@@ -149,10 +136,8 @@ class PlayerSystem : ComponentSystem<Player>, ISysUpdateable
 		for(int i = 0; i < size; ++i)
 		{
 			var body = (int) formatter.Deserialize(fs);
-			var side = (int) formatter.Deserialize(fs);
-			var leg = (int) formatter.Deserialize(fs);
 
-			Player p = new Player(physics.world, body, side, leg);
+			Player p = new Player(physics.world, body);
 			
 
 			components[i] = p;

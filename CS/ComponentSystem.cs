@@ -14,11 +14,8 @@ namespace CS
 	abstract class BaseSystem
 	{
 		public State _state;
-		public uint systemIndex;
-		protected int[] entityIDs;
-		protected int[] freeIndexes;
-		protected int size;
 
+		public uint systemIndex;
 		public int updateIndex = -1;
 		public int renderIndex = -1;
 		public String name;
@@ -27,11 +24,35 @@ namespace CS
 		{
 			_state = state;
 			systemIndex = state.RegisterSystem(this);
+			this.name = name;
+			state.G.RegisterSystemSerialization(name, DeserializeConstructor);
+		}
+
+		virtual public void Serialize(BinaryWriter writer)
+		{
+
+		}
+
+		virtual public void Deserialize(BinaryReader reader)
+		{
+
+		}
+
+		abstract public BaseSystem DeserializeConstructor(State state);
+	}
+
+	abstract class EntitySystem : BaseSystem
+	{
+		protected int[] entityIDs;
+		protected int[] freeIndexes;
+		protected int size;
+
+		public EntitySystem(State state, string name) : base(state, name)
+		{
+			
 			entityIDs = new int[0];
 			freeIndexes = new int[0];
 			size = 0;
-			this.name = name;
-			state.G.RegisterSystemSerialization(name, DeserializeConstructor);
 		}
 
 		public int AddEntity(int id)
@@ -47,7 +68,8 @@ namespace CS
 
 				_state.AddComponent(id, systemIndex, size - 1);
 				return size - 1;
-			} else
+			}
+			else
 			{
 				var index = freeIndexes[freeIndexes.Length - 1];
 
@@ -83,24 +105,24 @@ namespace CS
 				return false;
 		}
 
-		virtual public void Serialize(FileStream fs, BinaryFormatter formatter)
+		override public void Serialize(BinaryWriter writer)
 		{
-			formatter.Serialize(fs, size);
-			foreach(var e in entityIDs)
+			base.Serialize(writer);
+			writer.Write(size);
+			foreach (var e in entityIDs)
 			{
-				formatter.Serialize(fs, e);
+				writer.Write(e);
 			}
 		}
 
-		virtual public void Deserialize(FileStream fs, BinaryFormatter formatter)
+		override public void Deserialize(BinaryReader reader)
 		{
-			size = (int) formatter.Deserialize(fs);
+			base.Deserialize(reader);
+			size = reader.ReadInt32();
 			entityIDs = new int[size];
 			for (int i = 0; i < size; ++i)
-				entityIDs[i] = (int) formatter.Deserialize(fs);
+				entityIDs[i] = reader.ReadInt32();
 		}
-
-		abstract public BaseSystem DeserializeConstructor(State state);
 	}
 
 	interface ISysUpdateable
@@ -119,7 +141,7 @@ namespace CS
 	/*
 	 * System that manages the storage and update of differening components
 	 */
-	abstract class ComponentSystem<T> : BaseSystem
+	abstract class ComponentSystem<T> : EntitySystem
 	{
 		protected T[] components;
 		protected uint index;
@@ -149,8 +171,64 @@ namespace CS
 		}
 	}
 
-	[Serializable()]
-	class State : ISerializable
+	class Camera
+	{
+		public Matrix matrix
+		{
+			get
+			{
+				return
+				Matrix.CreateTranslation(new Vector3(-position, 0))
+				* Matrix.CreateScale(new Vector3(scale, 0))
+				* Matrix.CreateTranslation(new Vector3(rect.Width / 2f, rect.Height / 2f, 0))
+				;
+			}
+		}
+
+		Rectangle rect;
+		public Vector2 position;
+		public Vector2 scale;
+		public Vector2 center;
+		public float lerpValue = 0.5f;
+		private State _state;
+
+		public Camera(State state)
+		{
+			var width = state.G.game.GraphicsDevice.Viewport.Width;
+			var height = state.G.game.GraphicsDevice.Viewport.Height;
+			rect = new Rectangle(0, 0, width, height);
+			position = new Vector2(rect.Width/2f, rect.Height / 2f);
+			center = position;
+			setScale(new Vector2(1, 1));
+			_state = state;
+		}
+
+		public void SetPosition(Vector2 pos)
+		{
+			position = pos;
+		}
+
+		public void setScale(Vector2 scale)
+		{
+			this.scale = scale;
+		}
+
+		public void toCameraScale(ref Vector2 v)
+		{
+			var scale = new Vector2(matrix.Scale.X, matrix.Scale.Y);
+			var pos = new Vector2(matrix.Translation.X, matrix.Translation.Y);
+			v = v / scale - pos / scale;
+		}
+
+		public void toCamera(ref Vector2 v)
+		{
+			var scale = new Vector2(matrix.Scale.X, matrix.Scale.Y);
+			var pos = new Vector2(matrix.Translation.X, matrix.Translation.Y);
+			v = v - pos;
+		}
+	}
+
+	class State
 	{
 		private BaseSystem[] systems;
 		private uint[] updatableIndexes;
@@ -158,8 +236,9 @@ namespace CS
 
 		public int[][] entitiesIndexes;
 
-		[NonSerialized]
 		public Global G;
+		public Camera camera;
+		public int index;
 
 		public State(Global G)
 		{
@@ -168,6 +247,7 @@ namespace CS
 			renderableIndexes = new uint[0];
 			entitiesIndexes = new int[0][];
 			this.G = G;
+			camera = new Camera(this);
 		}
 
 		public uint RegisterSystem(BaseSystem system)
@@ -267,42 +347,42 @@ namespace CS
 
 		}
 
-		public void Serialize(FileStream fs, BinaryFormatter formatter)
+		public void Serialize(BinaryWriter writer)
 		{
 
-			formatter.Serialize(fs, entitiesIndexes.Length);
+			writer.Write(entitiesIndexes.Length);
 			for(int i = 0; i < entitiesIndexes.Length; ++i)
 			{
-				formatter.Serialize(fs, entitiesIndexes[i].Length);
+				writer.Write(entitiesIndexes[i].Length);
 				foreach (int index in entitiesIndexes[i])
-					formatter.Serialize(fs, index);
+					writer.Write(index);
 			}
 
-			formatter.Serialize(fs, systems.Length);
+			writer.Write(systems.Length);
 			for(int i = 0; i < systems.Length; ++i)
 			{
-				formatter.Serialize(fs, systems[i].name);
-				systems[i].Serialize(fs, formatter);
+				writer.Write(systems[i].name);
+				systems[i].Serialize(writer);
 			}
 		}
 
-		public void Deserialize(FileStream fs, BinaryFormatter formatter)
+		public void Deserialize(BinaryReader reader)
 		{
 
-			int entitiesSize = (int) formatter.Deserialize(fs);
+			int entitiesSize = reader.ReadInt32();
 			entitiesIndexes = new int[entitiesSize][];
 			for (int i = 0; i < entitiesIndexes.Length; ++i)
 			{
-				var s =	(int) formatter.Deserialize(fs);
+				int s = reader.ReadInt32();
 				entitiesIndexes[i] = new int[s];
 				for (int j = 0; j < s; ++j)
-					entitiesIndexes[i][j] =  (int) formatter.Deserialize(fs);
+					entitiesIndexes[i][j] = reader.ReadInt32();
 			}
 
-			var size = (int) formatter.Deserialize(fs);
-			for(int i = 0; i < size; ++i)
+			int size = reader.ReadInt32();
+			for (int i = 0; i < size; ++i)
 			{
-				String name = (String) formatter.Deserialize(fs);
+				String name = reader.ReadString();
 				bool sameName = false;
 				if (systems.Length > i && systems[i] != null && systems[i].name == name)
 					sameName = true;
@@ -310,7 +390,7 @@ namespace CS
 				{
 					if(!sameName)
 						G.systemsConstructors[name](this);
-					systems[i].Deserialize(fs, formatter);
+					systems[i].Deserialize(reader);
 				}
 			}
 		}
@@ -370,6 +450,7 @@ namespace CS
 			Array.Resize(ref activeStates, activeStates.Length + 1);
 
 			activeStates[activeStates.Length-1] = s;
+			s.index = activeStates.Length - 1;
 		}
 
 		private void loadTexture(String name)
@@ -390,7 +471,8 @@ namespace CS
 		public void Serialize(FileStream fs)
 		{
 			fs.Position = 0;
-			BinaryFormatter formatter = new BinaryFormatter();
+			BinaryWriter writer = new BinaryWriter(fs);
+			writer.BaseStream.Position = 0;
 
 			//serialize textures names
 			/*formatter.Serialize(fs, textures.Count);
@@ -400,17 +482,19 @@ namespace CS
 			}*/
 
 			//States
-			formatter.Serialize(fs, activeStates.Length);
+			writer.Write(activeStates.Length);
 			foreach(State s in activeStates)
 			{
-				s.Serialize(fs, formatter);
+				s.Serialize(writer);
 			}
+
 		}
 
 		public void Deserialize(FileStream fs)
 		{
 			fs.Position = 0;
-			BinaryFormatter formatter = new BinaryFormatter();
+			BinaryReader reader = new BinaryReader(fs);
+			reader.BaseStream.Position = 0;
 
 			//load textures
 			/*var texturesCount = (int) formatter.Deserialize(fs);
@@ -421,7 +505,7 @@ namespace CS
 			}*/
 
 			//States
-			var stateCount = (int)formatter.Deserialize(fs);
+			int stateCount = reader.ReadInt32();
 
 			if (activeStates.Length < stateCount)
 				Array.Resize(ref activeStates, stateCount);
@@ -431,7 +515,7 @@ namespace CS
 				State s = activeStates[i];
 				if (s == null)
 					s = new State(this);
-				s.Deserialize(fs, formatter);
+				s.Deserialize(reader);
 				activeStates[i] = s;
 			}
 		}
@@ -439,6 +523,11 @@ namespace CS
 		public void RegisterSystemSerialization(String name, DeserializationConstructor constructor)
 		{
 			systemsConstructors[name] = constructor;
+		}
+
+		public State getState(int index)
+		{
+			return activeStates[index];
 		}
 	}
 }

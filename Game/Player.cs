@@ -10,6 +10,7 @@ using FarseerPhysics.Factories;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework;
 using System.IO;
+using System.Diagnostics;
 using System.Runtime.Serialization.Formatters.Binary;
 
 class Player
@@ -26,19 +27,19 @@ class Player
 		this.body.FixedRotation = true;
 		this.body.SleepingAllowed = false;
 		this.body.IsStatic = false;
-		this.body.Friction = 0.5f;
+		this.body.Friction = 0f;
 		this.body.Restitution = 0;
 		physics.AddComponent(id, body);
 
-		FixtureFactory.AttachCircle(ConvertUnits.ToSimUnits(bounds.Width / 3f), 1f, body, ConvertUnits.ToSimUnits(new Vector2(0, bounds.Height/2f - bounds.Width / 3f)));
-
-		side = FixtureFactory.AttachRectangle(ConvertUnits.ToSimUnits(bounds.Width+ 2), ConvertUnits.ToSimUnits(bounds.Height/2), 1f,
+		var c = FixtureFactory.AttachCircle(ConvertUnits.ToSimUnits(bounds.Width / 3f),
+			1f, body, ConvertUnits.ToSimUnits(new Vector2(0, bounds.Height/2f - bounds.Width / 3f)));
+		side = FixtureFactory.AttachRectangle(ConvertUnits.ToSimUnits(bounds.Width/2f), ConvertUnits.ToSimUnits(bounds.Height/2), 1f,
 			ConvertUnits.ToSimUnits(new Vector2(0, -(bounds.Height/2f)/2f)), body);
 		side.Restitution = 0;
 		side.Friction = 0f;
 
 
-		leg = FixtureFactory.AttachRectangle(ConvertUnits.ToSimUnits(bounds.Width - 4), ConvertUnits.ToSimUnits(1), 0.001f, new Vector2(0, ConvertUnits.ToSimUnits(32 + 16 + 1)), body);
+		leg = FixtureFactory.AttachRectangle(ConvertUnits.ToSimUnits(bounds.Width/2f), ConvertUnits.ToSimUnits(1), 0.001f, new Vector2(0, ConvertUnits.ToSimUnits(bounds.Height / 2f)), body);
 		leg.IsSensor = true;
 		leg.OnCollision += collision;
 		leg.OnSeparation += seperation;
@@ -69,9 +70,11 @@ class Player
 class PlayerSystem : ComponentSystem<Player>, ISysUpdateable
 {
 	PhysicsSystem physics;
+	SpriteSystem spriteSys;
 	public PlayerSystem(State state) : base(state, "Player")
 	{
 		physics = state.getSystem<PhysicsSystem>();
+		spriteSys = state.getSystem<SpriteSystem>();
 	}
 
 	public override BaseSystem DeserializeConstructor(State state)
@@ -90,52 +93,94 @@ class PlayerSystem : ComponentSystem<Player>, ISysUpdateable
 			var keyState = G.keyboardState;
 			var vel = player.body.LinearVelocity;
 			bool moving = false;
-			var speed = ConvertUnits.ToSimUnits(230);
+			var speed = ConvertUnits.ToSimUnits(2030);
+			var maxVel = ConvertUnits.ToSimUnits(130);
+			var spriteIndex = _state.getComponentIndex(entityIDs[i], spriteSys.systemIndex);
+
 
 			if (keyState.IsKeyDown(Keys.A))
 			{
-				vel.X = -speed;
+				if (spriteIndex != -1)
+				{
+					var spr = spriteSys.getComponent(spriteIndex);
+					spr.flipH = true;
+				}
+				player.body.ApplyForce(new Vector2(-speed, 0));
 				moving = true;
 			}
 			if (keyState.IsKeyDown(Keys.D) )
 			{
-				vel.X = speed;
+				if (spriteIndex != -1)
+				{
+					var spr = spriteSys.getComponent(spriteIndex);
+					spr.flipH = false;
+				}
+				player.body.ApplyForce(new Vector2(speed, 0));
+
 				moving = true;
 			}
+		
 
-			if(keyState.IsKeyDown(Keys.Space) && player.isTouching > 0)
+			if (keyState.IsKeyDown(Keys.Space) && player.isTouching > 0)
 			{
 				vel.Y = -ConvertUnits.ToSimUnits(500);
 				moving = true;
 
 			}
 
+			if (spriteIndex != -1)
+			{
+				var spr = spriteSys.getComponent(spriteIndex);
+				if (vel.X > ConvertUnits.ToSimUnits( 5f))
+				{
+					spriteSys.Play("move", entityIDs[i], 8, true);
+				} else if(vel.X < -ConvertUnits.ToSimUnits(5f))
+				{
+					spriteSys.Play("move", entityIDs[i], 8, true);
+				}
+				else
+				{
+					spriteSys.Play("idle", entityIDs[i], 1, true);
+				}
+
+				if(player.isTouching == 0)
+				{
+					if(vel.Y < -0.1f)
+						spriteSys.Play("jumping", entityIDs[i], 1, true);
+					if (vel.Y > 0.1f)
+						spriteSys.Play("falling", entityIDs[i], 1, true);
+				}
+			}
+
+			if (Math.Abs(vel.X) > maxVel)
+				vel.X = maxVel * (vel.X > 0 ? 1 : -1);
+
 			player.body.LinearVelocity = vel;
 			//player.side.Position = player.body.Position;
 		}
 	}
 
-	public override void Serialize(FileStream fs, BinaryFormatter formatter)
+	public override void Serialize(BinaryWriter writer)
 	{
-		base.Serialize(fs, formatter);
+		base.Serialize(writer);
 		for (int i = 0; i < physics.world.BodyList.Count; ++i)
 		{
 			var b = physics.world.BodyList[i];
 			foreach (Player p in components)
 			{
 				if (b.BodyId == p.body.BodyId)
-					formatter.Serialize(fs, i);
+					writer.Write(i);
 			}
 		}
 	}
 
-	public override void Deserialize(FileStream fs, BinaryFormatter formatter)
+	public override void Deserialize(BinaryReader reader)
 	{
-		base.Deserialize(fs, formatter);
+		base.Deserialize(reader);
 		components = new Player[size];
 		for(int i = 0; i < size; ++i)
 		{
-			var body = (int) formatter.Deserialize(fs);
+			int body = reader.ReadInt32();
 
 			Player p = new Player(physics.world, body);
 			

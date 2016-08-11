@@ -80,9 +80,9 @@ namespace TankComProject
 		protected override void Initialize()
 		{
 			fs = new FileStream("data", FileMode.OpenOrCreate, FileAccess.ReadWrite);
-
+			
 			// TODO: Add your initialization logic here
-		//	graphics.PreferredBackBufferWidth = GraphicsDevice.DisplayMode.Width;
+			//graphics.PreferredBackBufferWidth = GraphicsDevice.DisplayMode.Width;
 			//graphics.PreferredBackBufferHeight = GraphicsDevice.DisplayMode.Height;
 			graphics.SynchronizeWithVerticalRetrace = false;
 			//graphics.IsFullScreen = true;
@@ -93,14 +93,39 @@ namespace TankComProject
 			G = new Global(this);
 
 			state = new State(G);
+			//state.camera.scale = new Vector2(2, 2);
+			State guiState = new State(G);
+
+
 			transSys = new TransformSystem(state);
 			physics = new PhysicsSystem(state);
 			textureSys = new TextureSystem(state);
+			CameraFollowSystem cameraFollow = new CameraFollowSystem(state);
+			SpriteSystem sprSys = new SpriteSystem(state);
 			mousesys = new MouseFollowSystem(state);
 			ddSys = new DragAndDropSystem(state);
 			collSys = new CollisionSystem(state);
 			PlayerSystem playerSys = new PlayerSystem(state);
+
+			
+			TransformSystem transSys2 = new TransformSystem(guiState);
+			//PhysicsSystem physics2 = new PhysicsSystem(guiState);
+			TextureSystem textureSys2 = new TextureSystem(guiState);
+			//CameraFollowSystem cameraFollow2 = new CameraFollowSystem(guiState);
+			SpriteSystem sprSys2 = new SpriteSystem(guiState);
+			MouseFollowSystem mousesys2 = new MouseFollowSystem(guiState);
+			DragAndDropSystem ddSys2 = new DragAndDropSystem(guiState);
+			CollisionSystem collSys2 = new CollisionSystem(guiState);
+			//PlayerSystem playerSys2 = new PlayerSystem(guiState);
+			
+
 			r = new Random();
+
+
+			//sprSys.CreateGridFrames("player", 30, 27);
+			{
+				sprSys.loadJSON("Content/player.json", "player");
+			}
 
 			//state.RegisterSystem(transSys);
 			//state.RegisterSystem(textureSys);
@@ -123,23 +148,36 @@ namespace TankComProject
 				//mousesys.AddEntity(e);
 			}
 			{
-				Image img = new Image(state, "cursor", new Vector2(0, 0), 0.1f);
-				Image img2 = new Image(state, "landscape1", new Vector2(100, 100));
+				Image img = new Image(guiState, "cursor", new Vector2(0, 0), 0.1f);
+				Image img2 = new Image(state, "player", new Vector2(100, 100));
 				eid = img2.id;
 				ddSys.AddEntity(eid);
-				mousesys.AddEntity(img.id);
+				mousesys2.AddEntity(img.id);
 				var textC = textureSys.getComponent(img2.textureIndex);
+				var sprite = new Sprite("player");
+				sprSys.AddComponent(eid, sprite);
+				sprSys.Play("idle", eid,1, true);
+				textC.setScale(2, 2);
 				var player = new Player(eid, physics, textC.textureRect);
 				playerSys.AddComponent(eid, player);
+				cameraFollow.SetEntity(eid);
 			}
 
-			var thickness = 100;
+			var thickness = 32;
 			{
 				var e = state.CreateEntity();
 				Transform t = new Transform();
 				t.position.Y = graphics.PreferredBackBufferHeight + thickness/2;
 				t.position.X = graphics.PreferredBackBufferWidth / 2;
 				transSys.AddComponent(e, t);
+
+				var texture = new Texture2(G, "BlockUnit");
+				//texture.setRect(graphics.PreferredBackBufferWidth, thickness);
+				texture.srcRect.Width = graphics.PreferredBackBufferWidth/2;
+				texture.srcRect.Height = thickness/2;
+				texture.setScale(2, 2);
+				textureSys.AddComponent(e, texture);
+
 				var p = PhysicsObject.CreateBody(physics, graphics.PreferredBackBufferWidth, thickness, FarseerPhysics.Dynamics.BodyType.Static);
 				physics.AddComponent(e, p);
 			}
@@ -150,6 +188,13 @@ namespace TankComProject
 				t.position.Y = 0- thickness/2;
 				t.position.X = graphics.PreferredBackBufferWidth / 2;
 				transSys.AddComponent(e, t);
+
+				var texture = new Texture2(G, "BlockUnit");
+				texture.srcRect.Width = graphics.PreferredBackBufferWidth / 2;
+				texture.srcRect.Height = thickness / 2;
+				texture.setScale(2, 2);
+				textureSys.AddComponent(e, texture);
+
 				var p = PhysicsObject.CreateBody(physics, graphics.PreferredBackBufferWidth, thickness, FarseerPhysics.Dynamics.BodyType.Static);
 				physics.AddComponent(e, p);
 			}
@@ -159,6 +204,13 @@ namespace TankComProject
 				t.position.Y = graphics.PreferredBackBufferHeight / 2;
 				t.position.X = graphics.PreferredBackBufferWidth + thickness/2;
 				transSys.AddComponent(e, t);
+
+				var texture = new Texture2(G, "BlockUnit");
+				texture.srcRect.Width = thickness/2;
+				texture.srcRect.Height = graphics.PreferredBackBufferHeight/2;
+				texture.setScale(2, 2);
+				textureSys.AddComponent(e, texture);
+
 				var p = PhysicsObject.CreateBody(physics, thickness, graphics.PreferredBackBufferHeight, FarseerPhysics.Dynamics.BodyType.Static);
 				physics.AddComponent(e, p);
 			}
@@ -168,10 +220,18 @@ namespace TankComProject
 				t.position.Y = graphics.PreferredBackBufferHeight / 2;
 				t.position.X = 0- thickness / 2;
 				transSys.AddComponent(e, t);
+
+				var texture = new Texture2(G, "BlockUnit");
+				texture.srcRect.Width = thickness/2;
+				texture.srcRect.Height = graphics.PreferredBackBufferHeight/2;
+				texture.setScale(2, 2);
+				textureSys.AddComponent(e, texture);
+
 				var p = PhysicsObject.CreateBody(physics, thickness, graphics.PreferredBackBufferHeight, FarseerPhysics.Dynamics.BodyType.Static);
 				physics.AddComponent(e, p);
 			}
 			G.ActivateState(state);
+			G.ActivateState(guiState);
 
 			base.Initialize();
 		}
@@ -227,12 +287,15 @@ namespace TankComProject
 			var dmy = mousestate.Y;
 			mousestate = Mouse.GetState();
 			var touch = TouchPanel.GetState();
+			var scale = state.camera.matrix.Scale;
 			if (G.mouseState.RightButton == ButtonState.Pressed || touch.Count == 2)
 			{
 				var e = state.CreateEntity();
 				Transform t = new Transform();
-				t.position.X = (float)mousestate.X;
-				t.position.Y = (float) mousestate.Y;
+				var pos = new Vector2(mousestate.X, mousestate.Y);
+				state.camera.toCamera(ref pos);
+				t.position.X = (float)pos.X/scale.X;
+				t.position.Y = (float)pos.Y/scale.Y;
 				if(touch.Count == 2)
 				{
 					t.position.X += touch[0].Position.X;

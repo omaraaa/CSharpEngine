@@ -60,35 +60,35 @@ namespace CS.Components
 			return new TransformSystem(state);
 		}
 
-		public override void Serialize(FileStream fs, BinaryFormatter formatter)
+		public override void Serialize(BinaryWriter writer)
 		{
-			base.Serialize(fs, formatter);
+			base.Serialize(writer);
 			foreach (Transform t in components)
 			{
-				formatter.Serialize(fs, t.position.X);
-				formatter.Serialize(fs, t.position.Y);
-				formatter.Serialize(fs, t.deltaPos.Y);
-				formatter.Serialize(fs, t.deltaPos.Y);
+				writer.Write(t.position.X);
+				writer.Write(t.position.Y);
+				writer.Write(t.deltaPos.Y);
+				writer.Write(t.deltaPos.Y);
 			}
 		}
 
-		public override void Deserialize(FileStream fs, BinaryFormatter formatter)
+		public override void Deserialize(BinaryReader reader)
 		{
-			base.Deserialize(fs, formatter);
+			base.Deserialize(reader);
 			components = new Transform[size];
 			for(int i = 0; i < size; ++i)
 			{
 				Transform t = new Transform();
-				t.position.X = (float) formatter.Deserialize(fs);
-				t.position.Y = (float) formatter.Deserialize(fs);
-				t.deltaPos.X = (float) formatter.Deserialize(fs);
-				t.deltaPos.Y = (float) formatter.Deserialize(fs);
+				t.position.X = reader.ReadSingle();
+				t.position.Y = reader.ReadSingle();
+				t.deltaPos.X = reader.ReadSingle();
+				t.deltaPos.Y = reader.ReadSingle();
 				components[i] = t;
 			}
 		}
 	}
 
-	class MouseFollowSystem : BaseSystem, ISysUpdateable
+	class MouseFollowSystem : EntitySystem, ISysUpdateable
 	{
 		private TransformSystem transform;
 		public MouseFollowSystem(State state) : base(state, "MouseFollow")
@@ -150,6 +150,8 @@ namespace CS.Components
 		public Vector2 origin;
 		public Rectangle textureRect;
 		public Rectangle srcRect;
+		public SpriteEffects effect;
+		public bool useCamera = true;
 
 		public Texture2(Global G, String textureString, float layer = 0.9f)
 		{
@@ -163,21 +165,28 @@ namespace CS.Components
 			origin = new Vector2(texture.Width / 2f, texture.Height / 2f);
 			textureRect = new Rectangle(0, 0, texture.Width, texture.Height);
 			srcRect = new Rectangle(0, 0, texture.Width, texture.Height);
-
+			effect = SpriteEffects.None;
 
 		}
 
 		public void Render(SpriteBatch batch, Vector2 position, float rotation = 0)
 		{
 			position += offset;
-			batch.Draw(texture, position: position, sourceRectangle:srcRect, scale: scale, layerDepth: layerDepth, rotation: rotation, origin: origin);
+			resetRect();
+			batch.Draw(texture, position: position, sourceRectangle:srcRect, scale: scale, layerDepth: layerDepth, rotation: rotation, origin: origin, effects:effect);
 		}
 
 		public void setScale(float x, float y)
 		{
 			scale = new Vector2(x, y);
-			textureRect.Width = (int) ((float) texture.Width * x);
-			textureRect.Height = (int) ((float) texture.Height * y);
+			textureRect.Width = (int) ((float) srcRect.Width * x);
+			textureRect.Height = (int) ((float) srcRect.Height * y);
+		}
+
+		public void setRect(int w, int h)
+		{
+			scale.X = ((float) w) / textureRect.Width;
+			scale.Y = ((float) h) / textureRect.Height;
 		}
 
 		public int Width
@@ -196,13 +205,21 @@ namespace CS.Components
 			}
 		}
 
-		
+		public void resetRect()
+		{
+			origin = new Vector2(srcRect.Width / 2f, srcRect.Height / 2f);
+			textureRect.Width = (int)((float)srcRect.Width * scale.X);
+			textureRect.Height = (int)((float)srcRect.Height * scale.Y);
+		}
 	}
+
+	
 
 	class TextureSystem : ComponentSystem<Texture2>, ISysRenderable
 	{
 		TransformSystem transform;
 		PhysicsSystem physics;
+		
 		public TextureSystem(State state) : base(state, "Texture")
 		{
 			_batch = new SpriteBatch(state.G.game.GraphicsDevice);
@@ -230,7 +247,7 @@ namespace CS.Components
 
 		public void Render(Global G)
 		{
-			_batch.Begin(sortMode: SpriteSortMode.BackToFront,samplerState: SamplerState.PointWrap);
+			_batch.Begin(sortMode: SpriteSortMode.BackToFront,samplerState: SamplerState.PointWrap, transformMatrix: _state.camera.matrix);
 			for(int i = 0; i < size; ++i)
 			{
 				if (entityIDs[i] == -1)
@@ -240,7 +257,9 @@ namespace CS.Components
 				var transformC = transform.getComponent(transfromIndex);
 				var textureC = components[i];
 
-				var pindex = _state.getComponentIndex(entityIDs[i], physics.systemIndex);
+				int pindex = -1;
+				if(physics != null)
+					pindex = _state.getComponentIndex(entityIDs[i], physics.systemIndex);
 				if(pindex != -1)
 				{
 					var p = physics.getComponent(pindex);
@@ -279,59 +298,93 @@ namespace CS.Components
 			return new TextureSystem(state);
 		}
 
-		override public void Serialize(FileStream fs, BinaryFormatter formatter)
+		override public void Serialize(BinaryWriter writer)
 		{
-			base.Serialize(fs, formatter);
+			base.Serialize(writer);
 			foreach(Texture2 t in components)
 			{
-				formatter.Serialize(fs, t.textureName);
-				formatter.Serialize(fs, t.layerDepth);
-				formatter.Serialize(fs, t.offset.X);
-				formatter.Serialize(fs, t.offset.Y);
-				formatter.Serialize(fs, t.scale.X);
-				formatter.Serialize(fs, t.scale.Y);
-				formatter.Serialize(fs, t.origin.X);
-				formatter.Serialize(fs, t.origin.Y);
-				formatter.Serialize(fs, t.textureRect.X);
-				formatter.Serialize(fs, t.textureRect.Y);
-				formatter.Serialize(fs, t.textureRect.Width);
-				formatter.Serialize(fs, t.textureRect.Height);
-				formatter.Serialize(fs, t.srcRect.X);
-				formatter.Serialize(fs, t.srcRect.Y);
-				formatter.Serialize(fs, t.srcRect.Width);
-				formatter.Serialize(fs, t.srcRect.Height);
+				writer.Write(t.textureName);
+				writer.Write(t.layerDepth);
+				writer.Write(t.offset.X);
+				writer.Write(t.offset.Y);
+				writer.Write(t.scale.X);
+				writer.Write(t.scale.Y);
+				writer.Write(t.origin.X);
+				writer.Write(t.origin.Y);
+				writer.Write(t.textureRect.X);
+				writer.Write(t.textureRect.Y);
+				writer.Write(t.textureRect.Width);
+				writer.Write(t.textureRect.Height);
+				writer.Write(t.srcRect.X);
+				writer.Write(t.srcRect.Y);
+				writer.Write(t.srcRect.Width);
+				writer.Write(t.srcRect.Height);
 			}
 		}
 
-		override public void Deserialize(FileStream fs, BinaryFormatter formatter)
+		override public void Deserialize(BinaryReader reader)
 		{
-			base.Deserialize(fs, formatter);
+			base.Deserialize(reader);
 			components = new Texture2[size];
 			for(int i = 0; i < size; ++i)
 			{
-				var name = (String) formatter.Deserialize(fs);
-				var layer = (float)formatter.Deserialize(fs);
+				var name = reader.ReadString();
+				var layer = reader.ReadInt32();
 				Texture2 t = new Texture2(_state.G, name, layer);
-				t.offset.X = (float) formatter.Deserialize(fs);
-				t.offset.Y = (float) formatter.Deserialize(fs);
-				t.scale.X = (float) formatter.Deserialize(fs);
-				t.scale.Y = (float) formatter.Deserialize(fs);
-				t.origin.X = (float) formatter.Deserialize(fs);
-				t.origin.Y = (float) formatter.Deserialize(fs);
-				t.textureRect.X = (int) formatter.Deserialize(fs);
-				t.textureRect.Y = (int) formatter.Deserialize(fs);
-				t.textureRect.Width = (int) formatter.Deserialize(fs);
-				t.textureRect.Height = (int) formatter.Deserialize(fs);
-				t.srcRect.X = (int) formatter.Deserialize(fs);
-				t.srcRect.Y = (int) formatter.Deserialize(fs);
-				t.srcRect.Width = (int) formatter.Deserialize(fs);
-				t.srcRect.Height = (int) formatter.Deserialize(fs);
+				t.offset.X = reader.ReadSingle();
+				t.offset.Y = reader.ReadSingle();
+				t.scale.X = reader.ReadSingle();
+				t.scale.Y = reader.ReadSingle();
+				t.origin.X = reader.ReadSingle();
+				t.origin.Y = reader.ReadSingle();
+				t.textureRect.X = reader.ReadInt32();
+				t.textureRect.Y = reader.ReadInt32();
+				t.textureRect.Width = reader.ReadInt32();
+				t.textureRect.Height = reader.ReadInt32();
+				t.srcRect.X = reader.ReadInt32();
+				t.srcRect.Y = reader.ReadInt32();
+				t.srcRect.Width = reader.ReadInt32();
+				t.srcRect.Height = reader.ReadInt32();
 				components[i] = t;
 			}
 		}
 	}
 
-	class DragAndDropSystem : BaseSystem, ISysUpdateable
+	class CameraFollowSystem : BaseSystem, ISysUpdateable
+	{
+		int followID;
+		TransformSystem transSys;
+		TextureSystem textureSystem;
+		Rectangle rect;
+		public CameraFollowSystem(State state) : base(state, "CameraFollowSystem")
+		{
+			transSys = state.getSystem<TransformSystem>();
+			textureSystem = state.getSystem<TextureSystem>();
+			rect = new Rectangle(0, 0, 100, 100);
+		}
+
+		public override BaseSystem DeserializeConstructor(State state)
+		{
+			return new CameraFollowSystem(state);
+		}
+
+		public void Update(Global G)
+		{
+			var index = _state.getComponentIndex(followID, transSys.systemIndex);
+			if(index != -1)
+			{
+				var pos = transSys.getComponent(index).position;
+				_state.camera.SetPosition(pos);
+			}
+		}
+
+		public void SetEntity(int id)
+		{
+			followID = id;
+		}
+	}
+
+	class DragAndDropSystem : EntitySystem, ISysUpdateable
 	{
 		bool mhold = false;
 		int heldEntity = -1;
@@ -358,8 +411,10 @@ namespace CS.Components
 
 		public void Update(Global G)
 		{
-			float mx = G.mouseState.X;
-			float my = G.mouseState.Y;
+			var pos = new Vector2(G.mouseState.X, G.mouseState.Y);
+			_state.camera.toCameraScale(ref pos);
+			float mx = pos.X;
+			float my = pos.Y;
 			bool leftPressed = G.mouseState.LeftButton == ButtonState.Pressed;
 
 			foreach (TouchLocation tl in G.touchCollection)

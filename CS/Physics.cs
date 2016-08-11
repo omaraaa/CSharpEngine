@@ -32,13 +32,13 @@ namespace CS.Components
 			body.BodyType = bodytype;
 			//body.Awake = false;
 			//body.SleepingAllowed = true;
-			body.FixedRotation = true;
-			if(bodytype == BodyType.Dynamic || bodytype == BodyType.Kinematic)
-			FixtureFactory.AttachCircle(ConvertUnits.ToSimUnits( Math.Min(width, height))/2, 1f, body);
-			else
-			FixtureFactory.AttachRectangle(ConvertUnits.ToSimUnits(width), ConvertUnits.ToSimUnits(height), 1f, Vector2.Zero, body);
-			body.Restitution = 0f;
-			//body.Friction = 1f;
+			//body.FixedRotation = true;
+			//if(bodytype == BodyType.Dynamic || bodytype == BodyType.Kinematic)
+			//FixtureFactory.AttachCircle(ConvertUnits.ToSimUnits( Math.Min(width, height))/2, 1f, body);
+			//else
+			FixtureFactory.AttachRectangle(ConvertUnits.ToSimUnits(width), ConvertUnits.ToSimUnits(height), 10f, Vector2.Zero, body);
+			//body.Restitution = 0f;
+			body.Friction = 0.2f;
 
 			return body;
 		}
@@ -53,6 +53,7 @@ namespace CS.Components
 		DebugViewXNA debugView;
 		SpriteBatch batch;
 
+
 		public PhysicsSystem(State state) : base(state, "FarseerPhysics")
 		{
 			var G = state.G;
@@ -60,9 +61,8 @@ namespace CS.Components
 			ConvertUnits.SetDisplayUnitToSimUnitRatio(64);
 			world = new World(new Vector2(0, ConvertUnits.ToSimUnits(2000)));
 			Settings.ContinuousPhysics = false;
-			//Settings.VelocityIterations = 6;
-			//Settings.PositionIterations = 2;
-			//Settings.EnableDiagnostics.Equals(false);
+			Settings.VelocityIterations = 1;
+			Settings.PositionIterations = 1;
 			Settings.DefaultFixtureIgnoreCCDWith = Category.All;
 			debugView = new DebugViewXNA(world);
 			debugView.LoadContent(G.game.GraphicsDevice, G.game.Content);
@@ -81,8 +81,11 @@ namespace CS.Components
 		public void Render(Global G)
 		{
 			#if DEBUG
-			var proj = Matrix.CreateOrthographicOffCenter(ConvertUnits.ToSimUnits(0), ConvertUnits.ToSimUnits(G.game.GraphicsDevice.Viewport.Width)
-				, ConvertUnits.ToSimUnits(G.game.GraphicsDevice.Viewport.Height), ConvertUnits.ToSimUnits(0), 0, 100);
+			var proj = Matrix.CreateOrthographicOffCenter(ConvertUnits.ToSimUnits( 0 + _state.camera.position.X - _state.camera.center.X),
+				ConvertUnits.ToSimUnits(G.game.GraphicsDevice.Viewport.Width + _state.camera.position.X - _state.camera.center.X),
+				ConvertUnits.ToSimUnits(G.game.GraphicsDevice.Viewport.Height + _state.camera.position.Y - _state.camera.center.Y),
+				ConvertUnits.ToSimUnits(0 + _state.camera.position.Y - _state.camera.center.Y),
+				0, 100) * Matrix.CreateScale(new Vector3(_state.camera.scale, 0));
 			batch.Begin();
 			debugView.RenderDebugData(ref proj);
 			//debugView.DrawString(0, 0, "test");
@@ -113,6 +116,7 @@ namespace CS.Components
 			else
 				world.Step(1 / 30f);
 
+
 			for (int i = 0; i < size; ++i)
 			{
 				//if (!components [i].Awake)
@@ -135,32 +139,32 @@ namespace CS.Components
 			return new PhysicsSystem(state);
 		}
 
-		public override void Serialize(FileStream fs, BinaryFormatter formatter)
+		public override void Serialize(BinaryWriter writer)
 		{
-			base.Serialize(fs, formatter);
+			base.Serialize(writer);
 
-			WorldSerializer.Serialize(world, fs.Name + "Farseer.xml");
+			WorldSerializer.Serialize(world, writer);
 			for (int i = 0; i < world.BodyList.Count; ++i)
 			{
 				for(int j = 0; j < size; ++j)
 				{
 					if(components[j] == world.BodyList[i])
-						formatter.Serialize(fs, i);
+						writer.Write(i);
 
 				}
 			}
 		}
 
-		public override void Deserialize(FileStream fs, BinaryFormatter formatter)
+		public override void Deserialize(BinaryReader reader)
 		{
-			base.Deserialize(fs, formatter);
+			base.Deserialize(reader);
 
-			world = null;
-			world = WorldSerializer.Deserialize(fs.Name + "Farseer.xml");
+			world = new World(Vector2.Zero);
+			WorldSerializer.Deserialize(world, reader);
 			components = new Body[size];
 			for(int i = 0; i < size; ++i)
 			{
-				var id = (int) formatter.Deserialize(fs);
+				int id = reader.ReadInt32();
 				components[i] = world.BodyList[id];
 			}
 	

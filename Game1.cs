@@ -360,7 +360,7 @@ namespace TankComProject
 									var msg = peer.CreateMessage();
 									msg.Write(0);
 									msg.Write(eid);
-									peer.SendMessage(msg, connection, NetDeliveryMethod.ReliableOrdered);
+									peer.SendMessage(msg, peer.Connections[0], NetDeliveryMethod.ReliableOrdered);
 								}
 								break;
 						}
@@ -440,6 +440,7 @@ namespace TankComProject
 				msg.Write(t.position.Y);
 				msg.Write(p.LinearVelocity.X);
 				msg.Write(p.LinearVelocity.Y);
+				peer.SendMessage(msg, peer.Connections[0], NetDeliveryMethod.ReliableOrdered);
 			}
 			G.Update(gameTime);
 			

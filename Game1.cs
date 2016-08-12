@@ -300,11 +300,13 @@ namespace TankComProject
 			if (Keyboard.GetState().IsKeyDown(Keys.F2))
 			{
 			}
+
+			if(peer.ConnectionsCount == 0 && eid != -1)
+			{
+			}
 			NetIncomingMessage message;
 			while ((message = peer.ReadMessage()) != null)
 			{
-				
-				Debug.WriteLine(message.MessageType.ToString());
 				switch (message.MessageType)
 				{
 					case NetIncomingMessageType.Data:

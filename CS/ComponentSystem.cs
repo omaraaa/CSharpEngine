@@ -322,6 +322,18 @@ namespace CS
 			entitiesIndexes[entityID][systemID] = -1;
 		}
 
+		public void RemoveEntity(int id)
+		{
+			for(int i = 0; i < entitiesIndexes[id].Length; ++i)
+			{
+				if (entitiesIndexes[id][i] != -1)
+				{
+					var sys = systems[i] as EntitySystem;
+					sys.RemoveEntity(id);
+				}
+			}
+		}
+
 		public int getComponentIndex(int entityID, uint systemID)
 		{
 			return entitiesIndexes[entityID][systemID];

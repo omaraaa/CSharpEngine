@@ -324,11 +324,15 @@ namespace TankComProject
 							playerSys.AddComponent(id, player);
 							//cameraFollow.SetEntity(id);
 							var msg = peer.CreateMessage();
-							msg.Write(0);
+							msg.Write(1);
 							msg.Write(id);
 							peer.SendMessage(msg, message.SenderConnection, NetDeliveryMethod.ReliableOrdered);
 						}
 						else if (type == 1)
+						{
+							Clienteid = message.ReadInt32();
+						}
+						else if (type == 2)
 						{
 							var id = message.ReadInt32();
 							var x = message.ReadSingle();
@@ -411,7 +415,7 @@ namespace TankComProject
 			if(Clienteid != -1 && eid != -1)
 			{
 				var msg = peer.CreateMessage();
-				msg.Write(1);
+				msg.Write(2);
 				msg.Write(Clienteid);
 				var t = transSys.getComponent(
 					state.getComponentIndex(eid, transSys.systemIndex));

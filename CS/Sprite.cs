@@ -144,7 +144,7 @@ namespace CS.Components
 					var tex = textureSys.getComponent(textureIndex);
 					var texName = components[index].textureName;
 
-					tex.srcRect = frames[texName][components[index].currentAnimation.frames[index]];
+					tex.srcRect = frames[texName][components[index].currentAnimation.frames[0]];
 					tex.resetRect();
 					tex.effect = components[index].flipH ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
 				}

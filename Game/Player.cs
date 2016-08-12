@@ -19,8 +19,9 @@ class Player
 	public Body body;
 	public int isTouching = 0;
 	public Fixture side;
+	public bool isControllable;
 
-	public Player(int id, PhysicsSystem physics, Rectangle bounds)
+	public Player(int id, PhysicsSystem physics, Rectangle bounds, bool control = true)
 	{
 
 		this.body = new Body(physics.world);
@@ -43,6 +44,8 @@ class Player
 		leg.IsSensor = true;
 		leg.OnCollision += collision;
 		leg.OnSeparation += seperation;
+
+		isControllable = control;
 
 	}
 
@@ -96,46 +99,46 @@ class PlayerSystem : ComponentSystem<Player>, ISysUpdateable
 			var speed = ConvertUnits.ToSimUnits(2030);
 			var maxVel = ConvertUnits.ToSimUnits(130);
 			var spriteIndex = _state.getComponentIndex(entityIDs[i], spriteSys.systemIndex);
-
-
-			if (keyState.IsKeyDown(Keys.A))
+			if (player.isControllable)
 			{
-				if (spriteIndex != -1)
+				if (keyState.IsKeyDown(Keys.A))
 				{
-					var spr = spriteSys.getComponent(spriteIndex);
-					spr.flipH = true;
+					if (spriteIndex != -1)
+					{
+						var spr = spriteSys.getComponent(spriteIndex);
+						spr.flipH = true;
+					}
+					player.body.ApplyForce(new Vector2(-speed, 0));
+					moving = true;
 				}
-				player.body.ApplyForce(new Vector2(-speed, 0));
-				moving = true;
-			}
-			if (keyState.IsKeyDown(Keys.D) )
-			{
-				if (spriteIndex != -1)
+				if (keyState.IsKeyDown(Keys.D))
 				{
-					var spr = spriteSys.getComponent(spriteIndex);
-					spr.flipH = false;
+					if (spriteIndex != -1)
+					{
+						var spr = spriteSys.getComponent(spriteIndex);
+						spr.flipH = false;
+					}
+					player.body.ApplyForce(new Vector2(speed, 0));
+
+					moving = true;
 				}
-				player.body.ApplyForce(new Vector2(speed, 0));
 
-				moving = true;
+
+				if (keyState.IsKeyDown(Keys.Space) && player.isTouching > 0)
+				{
+					vel.Y = -ConvertUnits.ToSimUnits(500);
+					moving = true;
+
+				}
 			}
-		
-
-			if (keyState.IsKeyDown(Keys.Space) && player.isTouching > 0)
-			{
-				vel.Y = -ConvertUnits.ToSimUnits(500);
-				moving = true;
-
-			}
-
 			if (spriteIndex != -1)
 			{
 				var spr = spriteSys.getComponent(spriteIndex);
-				if (vel.X > ConvertUnits.ToSimUnits( 5f))
+				if (vel.X > ConvertUnits.ToSimUnits( 20f))
 				{
 					spriteSys.Play("move", entityIDs[i], 8, true);
 					spr.flipH = false;
-				} else if(vel.X < -ConvertUnits.ToSimUnits(5f))
+				} else if(vel.X < -ConvertUnits.ToSimUnits(20f))
 				{
 					spriteSys.Play("move", entityIDs[i], 8, true);
 					spr.flipH = true;
@@ -147,9 +150,9 @@ class PlayerSystem : ComponentSystem<Player>, ISysUpdateable
 
 				if(player.isTouching == 0)
 				{
-					if(vel.Y < -0.1f)
+					if(vel.Y < -1f)
 						spriteSys.Play("jumping", entityIDs[i], 1, true);
-					if (vel.Y > 0.1f)
+					if (vel.Y > 1f)
 						spriteSys.Play("falling", entityIDs[i], 1, true);
 				}
 			}

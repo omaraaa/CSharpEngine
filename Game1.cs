@@ -40,9 +40,14 @@ namespace TankComProject
 		DragAndDropSystem ddSys;
 		CollisionSystem collSys;
 		PhysicsSystem physics;
+		CameraFollowSystem cameraFollow;
+		SpriteSystem sprSys;
+		PlayerSystem playerSys;
 		FileStream fs;
 		Random r;
-		int eid;
+		int eid = -1;
+		int Clienteid;
+		NetPeer peer;
 
 		double MoonSharpFactorial()
 		{
@@ -81,8 +86,8 @@ namespace TankComProject
 		{
 			var config = new NetPeerConfiguration("TankCom")
 			{ Port = 12345 };
-			var server = new NetServer(config);
-			server.Start();
+			peer = new NetPeer(config);
+			peer.Start();
 
 #if ANDROID
 			fs = new FileStream(Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.Personal), "data"), FileMode.OpenOrCreate, FileAccess.ReadWrite);
@@ -110,12 +115,12 @@ namespace TankComProject
 			transSys = new TransformSystem(state);
 			physics = new PhysicsSystem(state);
 			textureSys = new TextureSystem(state);
-			CameraFollowSystem cameraFollow = new CameraFollowSystem(state);
-			SpriteSystem sprSys = new SpriteSystem(state);
+			cameraFollow = new CameraFollowSystem(state);
+			sprSys = new SpriteSystem(state);
 			mousesys = new MouseFollowSystem(state);
 			ddSys = new DragAndDropSystem(state);
 			collSys = new CollisionSystem(state);
-			PlayerSystem playerSys = new PlayerSystem(state);
+			playerSys = new PlayerSystem(state);
 
 			
 			TransformSystem transSys2 = new TransformSystem(guiState);
@@ -159,18 +164,7 @@ namespace TankComProject
 			}
 			{
 				Image img = new Image(guiState, "cursor", new Vector2(0, 0), 0.1f);
-				Image img2 = new Image(state, "player", new Vector2(100, 100));
-				eid = img2.id;
-				ddSys.AddEntity(eid);
-				mousesys2.AddEntity(img.id);
-				var textC = textureSys.getComponent(img2.textureIndex);
-				var sprite = new Sprite("player");
-				sprSys.AddComponent(eid, sprite);
-				sprSys.Play("idle", eid,1, true);
-				textC.setScale(2, 2);
-				var player = new Player(eid, physics, textC.textureRect);
-				playerSys.AddComponent(eid, player);
-				cameraFollow.SetEntity(eid);
+				
 			}
 
 			var thickness = 32;
@@ -284,12 +278,94 @@ namespace TankComProject
 		{
 			if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
 				Exit();
-			if (Keyboard.GetState().IsKeyDown(Keys.F1))
-				mousesys.AddEntity(1);
+			if (Keyboard.GetState().IsKeyDown(Keys.F1) && eid == -1)
+			{
+				peer.Connect("192.168.1.100", 12345);
+
+				Image img2 = new Image(state, "player", new Vector2(100, 100));
+				eid = img2.id;
+				ddSys.AddEntity(eid);
+				var textC = textureSys.getComponent(img2.textureIndex);
+				var sprite = new Sprite("player");
+				sprSys.AddComponent(eid, sprite);
+				sprSys.Play("idle", eid, 1, true);
+				textC.setScale(2, 2);
+				var player = new Player(eid, physics, textC.textureRect);
+				playerSys.AddComponent(eid, player);
+				cameraFollow.SetEntity(eid);
+
+				var msg = peer.CreateMessage();
+				msg.Write(0);
+			}
 			if (Keyboard.GetState().IsKeyDown(Keys.F2))
-				mousesys.RemoveEntity(1);
+			{
+			}
+			NetIncomingMessage message;
+			while ((message = peer.ReadMessage()) != null)
+			{
+				
+				switch (message.MessageType)
+				{
+					case NetIncomingMessageType.Data:
+						// handle custom messages
+						int type = message.ReadInt32();
+						if(type == 0)
+						{
+							Clienteid = message.ReadInt32();
+							Image img2 = new Image(state, "player", new Vector2(100, 100));
+							var id = img2.id;
+							ddSys.AddEntity(id);
+							var textC = textureSys.getComponent(img2.textureIndex);
+							var sprite = new Sprite("player");
+							sprSys.AddComponent(id, sprite);
+							sprSys.Play("idle", id, 1, true);
+							textC.setScale(2, 2);
+							var player = new Player(id, physics, textC.textureRect, false);
+							playerSys.AddComponent(id, player);
+							//cameraFollow.SetEntity(id);
+							var msg = peer.CreateMessage();
+							msg.Write(0);
+							msg.Write(id);
+							peer.SendMessage(msg, message.SenderConnection, NetDeliveryMethod.ReliableOrdered);
+						}
+						else if (type == 1)
+						{
+							var id = message.ReadInt32();
+							var x = message.ReadSingle();
+							var y = message.ReadSingle();
 
+							var t = transSys.getComponent(
+								state.getComponentIndex(id, transSys.systemIndex));
+							var p = physics.getComponent(
+								state.getComponentIndex(id, physics.systemIndex));
+							t.position.X = x;
+							t.position.Y = y;
+							var vel = new Vector2(message.ReadSingle(), message.ReadSingle());
+							p.LinearVelocity = vel;
+						}
+						break;
 
+					case NetIncomingMessageType.StatusChanged:
+						// handle connection status messages
+						switch (message.SenderConnection.Status)
+						{
+							/* .. */
+						}
+						break;
+
+					case NetIncomingMessageType.DebugMessage:
+						// handle debug messages
+						// (only received when compiled in DEBUG mode)
+						Console.WriteLine(message.ReadString());
+						break;
+
+					/* .. */
+					default:
+						Console.WriteLine("unhandled message with type: "
+							+ message.MessageType);
+						break;
+				}
+			}
 
 
 			// TODO: Add your update logic here
@@ -332,8 +408,22 @@ namespace TankComProject
 				physics.AddComponent(e, p);
 				//mousesys.AddEntity(e);
 			}
+			if(Clienteid != -1)
+			{
+				var msg = peer.CreateMessage();
+				msg.Write(1);
+				msg.Write(Clienteid);
+				var t = transSys.getComponent(
+					state.getComponentIndex(eid, transSys.systemIndex));
+				var p = physics.getComponent(
+					state.getComponentIndex(eid, physics.systemIndex));
+				msg.Write(t.position.X);
+				msg.Write(t.position.Y);
+				msg.Write(p.LinearVelocity.X);
+				msg.Write(p.LinearVelocity.Y);
+			}
 			G.Update(gameTime);
-
+			
 			//var fpsTime = ((double)1000 / gameTime.ElapsedGameTime.Milliseconds);
 
 			//fpsGraph.Update(fpsTime);

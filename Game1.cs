@@ -86,11 +86,7 @@ namespace TankComProject
 		{
 			var config = new NetPeerConfiguration("TankCom")
 			{ Port = 12345 };
-			config.EnableMessageType(NetIncomingMessageType.DiscoveryRequest);
-			config.EnableMessageType(NetIncomingMessageType.DiscoveryResponse);
 			config.EnableMessageType(NetIncomingMessageType.ConnectionApproval);
-			config.EnableMessageType(NetIncomingMessageType.UnconnectedData);
-			config.EnableMessageType(NetIncomingMessageType.Data);
 			config.AcceptIncomingConnections = true;
 			peer = new NetPeer(config);
 			peer.Start();
@@ -299,10 +295,7 @@ namespace TankComProject
 				playerSys.AddComponent(eid, player);
 				cameraFollow.SetEntity(eid);
 
-				var msg = peer.CreateMessage();
-				msg.Write(0);
-				msg.Write(eid);
-				peer.SendMessage(msg, connection, NetDeliveryMethod.ReliableOrdered);
+				
 			}
 			if (Keyboard.GetState().IsKeyDown(Keys.F2))
 			{
@@ -311,6 +304,7 @@ namespace TankComProject
 			while ((message = peer.ReadMessage()) != null)
 			{
 				
+				Debug.WriteLine(message.MessageType.ToString());
 				switch (message.MessageType)
 				{
 					case NetIncomingMessageType.Data:
@@ -360,7 +354,15 @@ namespace TankComProject
 						// handle connection status messages
 						switch (message.SenderConnection.Status)
 						{
-							/* .. */
+							case NetConnectionStatus.Connected:
+								if(eid != -1)
+								{
+									var msg = peer.CreateMessage();
+									msg.Write(0);
+									msg.Write(eid);
+									peer.SendMessage(msg, connection, NetDeliveryMethod.ReliableOrdered);
+								}
+								break;
 						}
 						break;
 

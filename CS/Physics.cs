@@ -50,7 +50,9 @@ namespace CS.Components
 	{
 		public World world;
 		private TransformSystem transformSys;
+#if DEBUG
 		DebugViewXNA debugView;
+#endif
 		SpriteBatch batch;
 
 
@@ -60,13 +62,15 @@ namespace CS.Components
 			transformSys = state.getSystem<TransformSystem>();
 			ConvertUnits.SetDisplayUnitToSimUnitRatio(64);
 			world = new World(new Vector2(0, ConvertUnits.ToSimUnits(2000)));
-			Settings.ContinuousPhysics = false;
-			Settings.VelocityIterations = 1;
-			Settings.PositionIterations = 1;
-			Settings.DefaultFixtureIgnoreCCDWith = Category.All;
+			//Settings.ContinuousPhysics = false;
+			Settings.VelocityIterations = 6;
+			Settings.PositionIterations = 2;
+			//Settings.DefaultFixtureIgnoreCCDWith = Category.All;
+#if DEBUG
 			debugView = new DebugViewXNA(world);
 			debugView.LoadContent(G.game.GraphicsDevice, G.game.Content);
 			debugView.Enabled = true;
+#endif
 			batch = new SpriteBatch(G.game.GraphicsDevice);
 		}
 
@@ -167,10 +171,11 @@ namespace CS.Components
 				int id = reader.ReadInt32();
 				components[i] = world.BodyList[id];
 			}
-	
+#if DEBUG
 			debugView = new DebugViewXNA(world);
 			debugView.LoadContent(_state.G.game.GraphicsDevice, _state.G.game.Content);
 			debugView.Enabled = true;
+#endif
 		}
 	}
 

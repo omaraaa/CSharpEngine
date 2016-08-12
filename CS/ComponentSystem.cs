@@ -7,12 +7,14 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Input.Touch;
 using Microsoft.Xna.Framework.Graphics;
+using MonoGame.Utilities;
 
 namespace CS
 {
 
 	abstract class BaseSystem
 	{
+		
 		public State _state;
 
 		public uint systemIndex;

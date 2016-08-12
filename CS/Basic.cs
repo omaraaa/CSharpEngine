@@ -130,6 +130,7 @@ namespace CS.Components
 
 				pos.X = mx;
 				pos.Y = my;
+				_state.camera.toCameraScale(ref pos);
 				transformC.position = pos;
 			}
 		}
@@ -419,9 +420,11 @@ namespace CS.Components
 
 			foreach (TouchLocation tl in G.touchCollection)
 			{
-					leftPressed = true;
-					mx += tl.Position.X;
-					my += tl.Position.Y;
+				var pos2 = new Vector2(tl.Position.X, tl.Position.Y);
+				_state.camera.toCameraScale(ref pos2);
+				leftPressed = true;
+				mx = pos2.X;
+				my = pos2.Y;
 			}
 
 			if (leftPressed && !mhold)

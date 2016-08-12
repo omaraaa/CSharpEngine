@@ -134,9 +134,11 @@ class PlayerSystem : ComponentSystem<Player>, ISysUpdateable
 				if (vel.X > ConvertUnits.ToSimUnits( 5f))
 				{
 					spriteSys.Play("move", entityIDs[i], 8, true);
+					spr.flipH = false;
 				} else if(vel.X < -ConvertUnits.ToSimUnits(5f))
 				{
 					spriteSys.Play("move", entityIDs[i], 8, true);
+					spr.flipH = true;
 				}
 				else
 				{

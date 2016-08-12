@@ -175,7 +175,12 @@ namespace CS.Components
 
 		public void loadJSON(string path, string texture)
 		{
+#if ANDROID
+			var stream  = TitleContainer.OpenStream(path);
+			StreamReader r = new StreamReader(stream);
+#else
 			StreamReader r = new StreamReader(path);
+#endif
 			JsonTextReader json = new JsonTextReader(r);
 			JsonSerializer s = new JsonSerializer();
 

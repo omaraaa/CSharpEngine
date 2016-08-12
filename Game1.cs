@@ -11,9 +11,9 @@ using CS.Components;
 using Util;
 using Entities;
 
+using Lidgren.Network;
+using Lidgren;
 using MoonSharp.Interpreter;
-
-
 
 namespace TankComProject
 {
@@ -79,8 +79,16 @@ namespace TankComProject
 		/// </summary>
 		protected override void Initialize()
 		{
+			var config = new NetPeerConfiguration("TankCom")
+			{ Port = 12345 };
+			var server = new NetServer(config);
+			server.Start();
+
+#if ANDROID
+			fs = new FileStream(Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.Personal), "data"), FileMode.OpenOrCreate, FileAccess.ReadWrite);
+#else
 			fs = new FileStream("data", FileMode.OpenOrCreate, FileAccess.ReadWrite);
-			
+#endif       
 			// TODO: Add your initialization logic here
 			//graphics.PreferredBackBufferWidth = GraphicsDevice.DisplayMode.Width;
 			//graphics.PreferredBackBufferHeight = GraphicsDevice.DisplayMode.Height;
@@ -93,9 +101,11 @@ namespace TankComProject
 			G = new Global(this);
 
 			state = new State(G);
-			//state.camera.scale = new Vector2(2, 2);
 			State guiState = new State(G);
-
+#if ANDROID
+			state.camera.scale = new Vector2(4, 4);
+			guiState.camera.scale = new Vector2(4, 4);
+#endif
 
 			transSys = new TransformSystem(state);
 			physics = new PhysicsSystem(state);
@@ -298,8 +308,10 @@ namespace TankComProject
 				t.position.Y = (float)pos.Y/scale.Y;
 				if(touch.Count == 2)
 				{
-					t.position.X += touch[0].Position.X;
-					t.position.Y +=  touch[0].Position.Y;
+					var pos2 = new Vector2(touch[0].Position.X, touch[0].Position.Y);
+					state.camera.toCamera(ref pos2);
+					t.position.X = pos2.X / scale.X;
+					t.position.Y = pos2.Y / scale.Y;
 				}
 				Debug.Assert(!float.IsNaN(t.position.X) && !float.IsNaN(t.position.Y));
 				transSys.AddComponent(e, t);
@@ -343,19 +355,19 @@ namespace TankComProject
 		{
 			GraphicsDevice.Clear(Color.CornflowerBlue);
 			var fpsTime = ((double)1000 / gameTime.ElapsedGameTime.Milliseconds);
-			#if DEBUG
+#if DEBUG
 			fpsGraph.Update(fpsTime);
-			#endif
+#endif
 			spriteBatch.Begin(sortMode: SpriteSortMode.FrontToBack, samplerState: SamplerState.PointClamp);
 			{ 
 				Vector2 textMiddlePoint = font.MeasureString("HELLO") / 2;
 				// Places text in center of the screen
 				G.Render(spriteBatch);
-				#if DEBUG
+#if DEBUG
 				spriteBatch.DrawString(font, "FPS: " + fpsTime.ToString(), position, Color.White, 0, Vector2.Zero, 1f, SpriteEffects.None, 0.9f);
 				spriteBatch.DrawString(font, "Memory:" + GC.GetTotalMemory(false) / 1024, new Vector2(0, 10), Color.White, 0, Vector2.Zero, 1f, SpriteEffects.None, 0.9f);
 				fpsGraph.Draw(spriteBatch);
-				#endif
+#endif
 			}
 			spriteBatch.End();
 

@@ -222,16 +222,12 @@ namespace CS.Components
 						while (json.TokenType.ToString() != "EndArray")
 						{
 							
-							Debug.Print(json.TokenType.ToString());
 							json.Read();
-							Debug.Print(json.TokenType.ToString());
 							var name = json.ReadAsString();
 							json.Read();
 							var from = json.ReadAsInt32();
-							Debug.Print(from.ToString());
 							json.Read();
 							var to = json.ReadAsInt32();
-							Debug.Print(to.ToString());
 
 							int asize = -from.Value + to.Value + 1;
 							int[] indexes = new int[asize];
@@ -245,7 +241,6 @@ namespace CS.Components
 							while (json.TokenType.ToString() != "EndObject")
 							{
 								json.Read();
-								Debug.Print(json.TokenType.ToString());
 							}
 							json.Read();
 						}

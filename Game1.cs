@@ -86,9 +86,14 @@ namespace TankComProject
 		{
 			var config = new NetPeerConfiguration("TankCom")
 			{ Port = 12345 };
+			config.EnableMessageType(NetIncomingMessageType.DiscoveryRequest);
+			config.EnableMessageType(NetIncomingMessageType.DiscoveryResponse);
+			config.EnableMessageType(NetIncomingMessageType.ConnectionApproval);
+			config.EnableMessageType(NetIncomingMessageType.UnconnectedData);
+			config.EnableMessageType(NetIncomingMessageType.Data);
+			config.AcceptIncomingConnections = true;
 			peer = new NetPeer(config);
 			peer.Start();
-
 #if ANDROID
 			fs = new FileStream(Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.Personal), "data"), FileMode.OpenOrCreate, FileAccess.ReadWrite);
 #else
@@ -280,7 +285,7 @@ namespace TankComProject
 				Exit();
 			if (Keyboard.GetState().IsKeyDown(Keys.F1) && eid == -1)
 			{
-				peer.Connect("192.168.1.100", 12345);
+				var connection = peer.Connect("192.168.1.100", 12345);
 
 				Image img2 = new Image(state, "player", new Vector2(100, 100));
 				eid = img2.id;
@@ -296,6 +301,8 @@ namespace TankComProject
 
 				var msg = peer.CreateMessage();
 				msg.Write(0);
+				msg.Write(eid);
+				peer.SendMessage(msg, connection, NetDeliveryMethod.ReliableOrdered);
 			}
 			if (Keyboard.GetState().IsKeyDown(Keys.F2))
 			{
@@ -362,7 +369,13 @@ namespace TankComProject
 						// (only received when compiled in DEBUG mode)
 						Console.WriteLine(message.ReadString());
 						break;
-
+					case NetIncomingMessageType.WarningMessage:
+						Console.WriteLine(message.ReadString());
+						break;
+					/* .. */
+					case NetIncomingMessageType.ConnectionApproval:
+						message.SenderConnection.Approve();
+						break;
 					/* .. */
 					default:
 						Console.WriteLine("unhandled message with type: "

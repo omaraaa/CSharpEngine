@@ -303,6 +303,7 @@ namespace TankComProject
 
 			if(peer.ConnectionsCount == 0 && eid != -1)
 			{
+				state.RemoveEntity(eid);
 			}
 			NetIncomingMessage message;
 			while ((message = peer.ReadMessage()) != null)

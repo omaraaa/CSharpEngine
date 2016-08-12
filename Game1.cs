@@ -278,7 +278,13 @@ namespace TankComProject
 		protected override void Update(GameTime gameTime)
 		{
 			if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
+			{
+				var msg = peer.CreateMessage();
+				msg.Write(1);
+				msg.Write(Clienteid);
+				peer.SendMessage(msg, peer.Connections[0], NetDeliveryMethod.ReliableOrdered);
 				Exit();
+			}
 			if (Keyboard.GetState().IsKeyDown(Keys.F1) && eid == -1)
 			{
 				var connection = peer.Connect("192.168.1.100", 12345);
@@ -300,11 +306,6 @@ namespace TankComProject
 			if (Keyboard.GetState().IsKeyDown(Keys.F2))
 			{
 			}
-
-			if(peer.ConnectionsCount == 0 && eid != -1)
-			{
-				state.RemoveEntity(eid);
-			}
 			NetIncomingMessage message;
 			while ((message = peer.ReadMessage()) != null)
 			{
@@ -315,7 +316,7 @@ namespace TankComProject
 						int type = message.ReadInt32();
 						if(type == 0)
 						{
-							Clienteid = message.ReadInt32();
+							//Clienteid = message.ReadInt32();
 							Image img2 = new Image(state, "player", new Vector2(100, 100));
 							var id = img2.id;
 							ddSys.AddEntity(id);
@@ -351,6 +352,12 @@ namespace TankComProject
 							var vel = new Vector2(message.ReadSingle(), message.ReadSingle());
 							p.LinearVelocity = vel;
 						}
+						else if (type == 3)
+						{
+							var id = message.ReadInt32();
+							if(id != -1)
+							state.RemoveEntity(id);
+						}
 						break;
 
 					case NetIncomingMessageType.StatusChanged:
@@ -362,7 +369,7 @@ namespace TankComProject
 								{
 									var msg = peer.CreateMessage();
 									msg.Write(0);
-									msg.Write(eid);
+									//msg.Write(eid);
 									peer.SendMessage(msg, peer.Connections[0], NetDeliveryMethod.ReliableOrdered);
 								}
 								break;

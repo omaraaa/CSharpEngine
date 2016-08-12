@@ -279,11 +279,12 @@ namespace TankComProject
 		{
 			if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
 			{
+				if (peer.ConnectionsCount == 0)
+					Exit();
 				var msg = peer.CreateMessage();
-				msg.Write(1);
+				msg.Write(3);
 				msg.Write(Clienteid);
 				peer.SendMessage(msg, peer.Connections[0], NetDeliveryMethod.ReliableOrdered);
-				Exit();
 			}
 			if (Keyboard.GetState().IsKeyDown(Keys.F1) && eid == -1)
 			{
@@ -356,7 +357,14 @@ namespace TankComProject
 						{
 							var id = message.ReadInt32();
 							if(id != -1)
-							state.RemoveEntity(id);
+								state.RemoveEntity(id);
+
+							var msg = peer.CreateMessage();
+							msg.Write(4);
+							peer.SendMessage(msg, message.SenderConnection, NetDeliveryMethod.ReliableOrdered);
+						} else if (type == 4)
+						{
+							Exit();
 						}
 						break;
 

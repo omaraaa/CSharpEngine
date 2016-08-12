@@ -46,7 +46,7 @@ namespace TankComProject
 		FileStream fs;
 		Random r;
 		int eid = -1;
-		int Clienteid;
+		int Clienteid = -1;
 		NetPeer peer;
 
 		double MoonSharpFactorial()
@@ -408,7 +408,7 @@ namespace TankComProject
 				physics.AddComponent(e, p);
 				//mousesys.AddEntity(e);
 			}
-			if(Clienteid != -1)
+			if(Clienteid != -1 && eid != -1)
 			{
 				var msg = peer.CreateMessage();
 				msg.Write(1);

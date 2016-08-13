@@ -93,7 +93,7 @@ namespace TankComProject
 #if ANDROID
 			fs = new FileStream(Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.Personal), "data"), FileMode.OpenOrCreate, FileAccess.ReadWrite);
 #else
-			fs = new FileStream("data", FileMode.OpenOrCreate, FileAccess.ReadWrite);
+			//fs = new FileStream("data", FileMode.OpenOrCreate, FileAccess.ReadWrite);
 #endif       
 			// TODO: Add your initialization logic here
 			//graphics.PreferredBackBufferWidth = GraphicsDevice.DisplayMode.Width;
@@ -165,7 +165,7 @@ namespace TankComProject
 			}
 			{
 				Image img = new Image(guiState, "cursor", new Vector2(0, 0), 0.1f);
-				
+				mousesys2.AddEntity(img.id);
 			}
 
 			var thickness = 32;
@@ -279,12 +279,15 @@ namespace TankComProject
 		{
 			if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
 			{
-				if (peer.ConnectionsCount == 0)
-					Exit();
-				var msg = peer.CreateMessage();
-				msg.Write(3);
-				msg.Write(Clienteid);
-				peer.SendMessage(msg, peer.Connections[0], NetDeliveryMethod.ReliableOrdered);
+				if (peer.ConnectionsCount != 0)
+				{
+					var msg = peer.CreateMessage();
+					msg.Write(3);
+					msg.Write(Clienteid);
+					peer.SendMessage(msg, peer.Connections[0], NetDeliveryMethod.ReliableOrdered);
+
+				}
+				Exit();
 			}
 			if (Keyboard.GetState().IsKeyDown(Keys.F1) && eid == -1)
 			{
@@ -344,14 +347,20 @@ namespace TankComProject
 							var x = message.ReadSingle();
 							var y = message.ReadSingle();
 
-							var t = transSys.getComponent(
-								state.getComponentIndex(id, transSys.systemIndex));
-							var p = physics.getComponent(
-								state.getComponentIndex(id, physics.systemIndex));
-							t.position.X = x;
-							t.position.Y = y;
-							var vel = new Vector2(message.ReadSingle(), message.ReadSingle());
-							p.LinearVelocity = vel;
+							var ti = state.getComponentIndex(id, transSys.systemIndex);
+							var pi = state.getComponentIndex(id, physics.systemIndex);
+							if (ti != -1)
+							{
+								var t = transSys.getComponent(ti);
+								t.position.X = x;
+								t.position.Y = y;
+							}
+							if (pi != -1)
+							{
+								var p = physics.getComponent(pi);
+								var vel = new Vector2(message.ReadSingle(), message.ReadSingle());
+								p.LinearVelocity = vel;
+							}
 						}
 						else if (type == 3)
 						{

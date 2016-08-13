@@ -1,3 +1,3 @@
-﻿-binary farseer serialization
+﻿-binary farseer serialization DONE
 -lua scripting support
 -networking

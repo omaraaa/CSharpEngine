@@ -285,7 +285,7 @@ namespace TankComProject
 					msg.Write(3);
 					msg.Write(Clienteid);
 					peer.SendMessage(msg, peer.Connections[0], NetDeliveryMethod.ReliableOrdered);
-
+					peer.Shutdown("disconnecting");
 				}
 				Exit();
 			}

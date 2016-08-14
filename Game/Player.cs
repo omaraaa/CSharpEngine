@@ -193,4 +193,12 @@ class PlayerSystem : ComponentSystem<Player>, ISysUpdateable
 			components[i] = p;
 		}
 	}
+
+	public override void RemoveEntity(int id)
+	{
+		var index = _state.getComponentIndex(id, systemIndex);
+		physics.world.RemoveBody(components[index].body);
+
+		base.RemoveEntity(id);
+	}
 }

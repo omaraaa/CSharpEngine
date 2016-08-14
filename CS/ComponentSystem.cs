@@ -84,7 +84,7 @@ namespace CS
 			}
 		}
 
-		public void RemoveEntity(int id)
+		virtual public void RemoveEntity(int id)
 		{
 			var index = _state.getComponentIndex(id, systemIndex);
 			if (index == -1)

@@ -108,7 +108,9 @@ namespace CS.Components
 			
 			for(int i = 0; i < size; ++i)
 			{
-				if (entityIDs[i] == -1 || !components[i].currentAnimation.active)
+				if (entityIDs[i] == -1)
+					continue;
+				if (!components[i].currentAnimation.active)
 					continue;
 
 				int textureIndex = -1;
@@ -257,6 +259,42 @@ namespace CS.Components
 					this.frames[texture][i] = f;
 					i++;
 				}
+			}
+		}
+
+		public override void Serialize(BinaryWriter writer)
+		{
+			base.Serialize(writer);
+			for (int i = 0; i < size; ++i)
+			{
+				writer.Write(components[i].textureName);
+				writer.Write(components[i].currentAnimation.active);
+				writer.Write(components[i].currentAnimation.name);
+				writer.Write(components[i].currentAnimation.index);
+				writer.Write(components[i].currentAnimation.repeat);
+				writer.Write(components[i].currentAnimation.fps);
+			}
+		}
+
+		public override void Deserialize(BinaryReader reader)
+		{
+			base.Deserialize(reader);
+			components = new Sprite[size];
+			for (int i = 0; i < size; ++i)
+			{
+				string textureName = reader.ReadString();
+				components[i] = new Sprite(textureName);
+				var active = reader.ReadBoolean();
+				var name = reader.ReadString();
+				var index = reader.ReadInt32();
+				var repeat = reader.ReadBoolean();
+				var fps = reader.ReadSingle();
+
+				components[i].currentAnimation = animations[name];
+				components[i].currentAnimation.active = active;
+				components[i].currentAnimation.index = index;
+				components[i].currentAnimation.repeat = repeat;
+				components[i].currentAnimation.fps = fps;
 			}
 		}
 	}

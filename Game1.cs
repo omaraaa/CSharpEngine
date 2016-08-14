@@ -93,7 +93,7 @@ namespace TankComProject
 #if ANDROID
 			fs = new FileStream(Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.Personal), "data"), FileMode.OpenOrCreate, FileAccess.ReadWrite);
 #else
-			//fs = new FileStream("data", FileMode.OpenOrCreate, FileAccess.ReadWrite);
+			fs = new FileStream("data", FileMode.OpenOrCreate, FileAccess.ReadWrite);
 #endif       
 			// TODO: Add your initialization logic here
 			//graphics.PreferredBackBufferWidth = GraphicsDevice.DisplayMode.Width;

@@ -92,7 +92,8 @@ namespace TankComProject
 			config.EnableMessageType(NetIncomingMessageType.ConnectionApproval);
 			config.AcceptIncomingConnections = true;
 
-			clientConfig = new NetPeerConfiguration("TankComClient");
+			clientConfig = new NetPeerConfiguration("TankComClient")
+			{ Port = 12345 };
 			clientConfig.EnableMessageType(NetIncomingMessageType.ConnectionApproval);
 			clientConfig.AcceptIncomingConnections = true;
 

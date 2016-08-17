@@ -82,6 +82,12 @@ namespace CS.Components
 			}
 		}
 
+		public override int AddComponent(int id, Body component)
+		{
+			world.ProcessChanges();
+			return base.AddComponent(id, component);
+		}
+
 		public void Render(Global G)
 		{
 			#if DEBUG
@@ -165,7 +171,6 @@ namespace CS.Components
 
 			world = new World(Vector2.Zero);
 			WorldSerializer.Deserialize(world, reader);
-			components = new Body[size];
 			for(int i = 0; i < size; ++i)
 			{
 				int id = reader.ReadInt32();

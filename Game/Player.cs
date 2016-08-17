@@ -182,7 +182,6 @@ class PlayerSystem : ComponentSystem<Player>, ISysUpdateable
 	public override void Deserialize(BinaryReader reader)
 	{
 		base.Deserialize(reader);
-		components = new Player[size];
 		for(int i = 0; i < size; ++i)
 		{
 			int body = reader.ReadInt32();
@@ -200,5 +199,20 @@ class PlayerSystem : ComponentSystem<Player>, ISysUpdateable
 		physics.world.RemoveBody(components[index].body);
 
 		base.RemoveEntity(id);
+	}
+
+	public void setControl(int id)
+	{
+		var index = _state.getComponentIndex(id, systemIndex);
+		if (index != -1)
+			components[index].isControllable = true;
+
+		for(int i = 0; i < size; ++i)
+		{
+			if (entityIDs[i] == -1 || i == index)
+				continue;
+
+			components[i].isControllable = false;
+		}
 	}
 }

@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Input.Touch;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Diagnostics;
 
@@ -51,6 +52,8 @@ namespace TankComProject
 		NetServer server;
 		NetPeerConfiguration config;
 		NetPeerConfiguration clientConfig;
+		float acc = 0;
+		float serverRate = 1 / 20f;
 
 		double MoonSharpFactorial()
 		{
@@ -87,15 +90,10 @@ namespace TankComProject
 		/// </summary>
 		protected override void Initialize()
 		{
-			config = new NetPeerConfiguration("TankComServer")
+			config = new NetPeerConfiguration("TankCom")
 			{ Port = 12345 };
-			config.EnableMessageType(NetIncomingMessageType.ConnectionApproval);
-			config.AcceptIncomingConnections = true;
 
-			clientConfig = new NetPeerConfiguration("TankComClient")
-			{ Port = 12345 };
-			clientConfig.EnableMessageType(NetIncomingMessageType.ConnectionApproval);
-			clientConfig.AcceptIncomingConnections = true;
+			clientConfig = new NetPeerConfiguration("TankCom");
 
 			peer = new NetClient(clientConfig);
 
@@ -290,34 +288,20 @@ namespace TankComProject
 		{
 			if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
 			{
-				if (peer.ConnectionsCount != 0)
+				if (peer.ServerConnection != null)
 				{
 					var msg = peer.CreateMessage();
 					msg.Write(3);
 					msg.Write(Clienteid);
-					peer.SendMessage(msg, peer.Connections[0], NetDeliveryMethod.ReliableOrdered);
+					peer.SendMessage(msg, NetDeliveryMethod.ReliableOrdered);
 					peer.Shutdown("disconnecting");
 				}
 				Exit();
 			}
-			if (Keyboard.GetState().IsKeyDown(Keys.F1) && eid == -1)
+			if (Keyboard.GetState().IsKeyDown(Keys.F1) && peer.ServerConnection == null)
 			{
 				peer.Start();
-				var connection = peer.Connect("192.168.1.100", 12345);
-
-				Image img2 = new Image(state, "player", new Vector2(100, 100));
-				eid = img2.id;
-				ddSys.AddEntity(eid);
-				var textC = textureSys.getComponent(img2.textureIndex);
-				var sprite = new Sprite("player");
-				sprSys.AddComponent(eid, sprite);
-				sprSys.Play("idle", eid, 1, true);
-				textC.setScale(2, 2);
-				var player = new Player(eid, physics, textC.textureRect);
-				playerSys.AddComponent(eid, player);
-				cameraFollow.SetEntity(eid);
-
-				
+				var connection = peer.Connect("192.168.1.100", 12345);		
 			}
 			if (Keyboard.GetState().IsKeyDown(Keys.F2) && server.Status == NetPeerStatus.NotRunning)
 			{
@@ -352,7 +336,17 @@ namespace TankComProject
 						}
 						else if (type == 1)
 						{
-							Clienteid = message.ReadInt32();
+							var s = new MemoryStream();
+							int cap = message.ReadInt32();
+							byte[] bytes = message.ReadBytes(cap);
+							s.Write(bytes, 0, cap);
+							s.Position = 0;
+							BinaryReader reader = new BinaryReader(s);
+							state.Deserialize(reader);
+							if(Clienteid == -1)
+								Clienteid = message.ReadInt32();
+							playerSys.setControl(Clienteid);
+							cameraFollow.SetEntity(Clienteid);
 						}
 						else if (type == 2)
 						{
@@ -364,15 +358,38 @@ namespace TankComProject
 							var pi = state.getComponentIndex(id, physics.systemIndex);
 							if (ti != -1)
 							{
-								var t = transSys.getComponent(ti);
-								t.position.X = x;
-								t.position.Y = y;
+								var t = new Vector2();
+								var t2 = transSys.getComponent(ti);
+								t.X = x;
+								t.Y = y;
+
+								if(Clienteid == id)
+								{
+									if(Vector2.Distance(t, t2.position) > 1)
+									{
+										t2.position = t;
+									}
+								} else
+								{
+									t2.position = t;
+								}
 							}
 							if (pi != -1)
 							{
 								var p = physics.getComponent(pi);
 								var vel = new Vector2(message.ReadSingle(), message.ReadSingle());
-								p.LinearVelocity = vel;
+								if (Clienteid == id)
+								{
+									if (Vector2.Distance(p.LinearVelocity, vel) > FarseerPhysics.ConvertUnits.ToSimUnits(1f))
+									{
+										p.LinearVelocity = vel;
+									}
+								}
+								else
+								{
+									p.LinearVelocity = vel;
+								}
+								
 							}
 						}
 						else if (type == 3)
@@ -380,10 +397,6 @@ namespace TankComProject
 							var id = message.ReadInt32();
 							if(id != -1)
 								state.RemoveEntity(id);
-
-							var msg = peer.CreateMessage();
-							msg.Write(4);
-							peer.SendMessage(msg, message.SenderConnection, NetDeliveryMethod.ReliableOrdered);
 						} else if (type == 4)
 						{
 							Exit();
@@ -395,13 +408,10 @@ namespace TankComProject
 						switch (message.SenderConnection.Status)
 						{
 							case NetConnectionStatus.Connected:
-								if(eid != -1)
-								{
 									var msg = peer.CreateMessage();
 									msg.Write(0);
 									//msg.Write(eid);
-									peer.SendMessage(msg, peer.Connections[0], NetDeliveryMethod.ReliableOrdered);
-								}
+									peer.SendMessage(msg, NetDeliveryMethod.ReliableOrdered);
 								break;
 						}
 						break;
@@ -435,7 +445,6 @@ namespace TankComProject
 						int type = message.ReadInt32();
 						if (type == 0)
 						{
-							//Clienteid = message.ReadInt32();
 							Image img2 = new Image(state, "player", new Vector2(100, 100));
 							var id = img2.id;
 							ddSys.AddEntity(id);
@@ -446,14 +455,31 @@ namespace TankComProject
 							textC.setScale(2, 2);
 							var player = new Player(id, physics, textC.textureRect, false);
 							playerSys.AddComponent(id, player);
+
 							//cameraFollow.SetEntity(id);
 							var msg = server.CreateMessage();
 							msg.Write(1);
+							var s = new MemoryStream();
+							BinaryWriter writer = new BinaryWriter(s);
+							state.Serialize(writer);
+							writer.Flush();
+							s.Position = 0;
+							byte[] bytes = s.ToArray();
+							msg.Write(bytes.Length);
+							msg.Write(bytes);
+							//Clienteid = message.ReadInt32();
 							msg.Write(id);
-							server.SendMessage(msg, message.SenderConnection, NetDeliveryMethod.ReliableOrdered);
+							writer.Close();
+							server.SendToAll(msg, NetDeliveryMethod.ReliableOrdered);
 						}
 						else if (type == 1)
 						{
+							var s = new MemoryStream();
+							int cap = message.ReadInt32();
+							byte[] bytes = message.ReadBytes(cap);
+							s.Write(bytes, 0, cap);
+							BinaryReader reader = new BinaryReader(s);
+							state.Deserialize(reader);
 							Clienteid = message.ReadInt32();
 						}
 						else if (type == 2)
@@ -483,9 +509,6 @@ namespace TankComProject
 							if (id != -1)
 								state.RemoveEntity(id);
 
-							var msg = server.CreateMessage();
-							msg.Write(4);
-							server.SendMessage(msg, message.SenderConnection, NetDeliveryMethod.ReliableOrdered);
 						}
 						else if (type == 4)
 						{
@@ -497,15 +520,7 @@ namespace TankComProject
 						// handle connection status messages
 						switch (message.SenderConnection.Status)
 						{
-							case NetConnectionStatus.Connected:
-								if (eid != -1)
-								{
-									var msg = server.CreateMessage();
-									msg.Write(0);
-									//msg.Write(eid);
-									server.SendMessage(msg, peer.Connections[0], NetDeliveryMethod.ReliableOrdered);
-								}
-								break;
+
 						}
 						break;
 
@@ -569,31 +584,61 @@ namespace TankComProject
 				physics.AddComponent(e, p);
 				//mousesys.AddEntity(e);
 			}
-			if(Clienteid != -1 && eid != -1)
+			if (Clienteid != -1)
 			{
 				var msg = peer.CreateMessage();
 				msg.Write(2);
 				msg.Write(Clienteid);
 				var t = transSys.getComponent(
-					state.getComponentIndex(eid, transSys.systemIndex));
+					state.getComponentIndex(Clienteid, transSys.systemIndex));
 				var p = physics.getComponent(
-					state.getComponentIndex(eid, physics.systemIndex));
+					state.getComponentIndex(Clienteid, physics.systemIndex));
 				msg.Write(t.position.X);
 				msg.Write(t.position.Y);
 				msg.Write(p.LinearVelocity.X);
 				msg.Write(p.LinearVelocity.Y);
 				peer.SendMessage(msg, peer.Connections[0], NetDeliveryMethod.ReliableOrdered);
 			}
-			G.Update(gameTime);
 			
+			G.Update(gameTime);
+			acc += G.dt;
+			if (server.Status == NetPeerStatus.Running && acc >= serverRate)
+			{
+				List<int> updatedEntities = transSys.GetUpdated();
+				foreach (int e in updatedEntities)
+				{
+					var msg = server.CreateMessage();
+					msg.Write(2);
+					msg.Write(e);
+					var t = transSys.getComponent(
+						state.getComponentIndex(e, transSys.systemIndex));
+					var p = physics.getComponent(
+						state.getComponentIndex(e, physics.systemIndex));
+					msg.Write(t.position.X);
+					msg.Write(t.position.Y);
+					msg.Write(p.LinearVelocity.X);
+					msg.Write(p.LinearVelocity.Y);
+					server.SendToAll(msg, NetDeliveryMethod.ReliableOrdered);
+				}
+
+				acc -= serverRate;
+			}
 			//var fpsTime = ((double)1000 / gameTime.ElapsedGameTime.Milliseconds);
 
 			//fpsGraph.Update(fpsTime);
 
 			if (G.keyboardState.IsKeyDown(Keys.F11))
+			{
+				fs = new FileStream("data", FileMode.OpenOrCreate, FileAccess.ReadWrite);
 				G.Serialize(fs);
-			if(G.keyboardState.IsKeyDown(Keys.F12))
+				fs.Close();
+			}
+			if (G.keyboardState.IsKeyDown(Keys.F12))
+			{
+				fs = new FileStream("data", FileMode.OpenOrCreate, FileAccess.ReadWrite);
 				G.Deserialize(fs);
+				fs.Close();
+			}
 
 
 			base.Update(gameTime);

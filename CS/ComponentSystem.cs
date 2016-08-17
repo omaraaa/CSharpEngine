@@ -48,6 +48,7 @@ namespace CS
 		protected int[] entityIDs;
 		protected int[] freeIndexes;
 		protected int size;
+		protected int serializeSize = 0;
 
 		public EntitySystem(State state, string name) : base(state, name)
 		{
@@ -120,8 +121,9 @@ namespace CS
 		override public void Deserialize(BinaryReader reader)
 		{
 			base.Deserialize(reader);
-			size = reader.ReadInt32();
-			entityIDs = new int[size];
+			var s = reader.ReadInt32();
+			entityIDs = new int[s];
+			size = s;
 			for (int i = 0; i < size; ++i)
 				entityIDs[i] = reader.ReadInt32();
 		}
@@ -158,7 +160,7 @@ namespace CS
 			cachedComponent = 0;
 		}
 
-		public int AddComponent(int id, T component)
+		virtual public int AddComponent(int id, T component)
 		{
 			var index = AddEntity(id);
 			if(index+1 >= size)
@@ -170,6 +172,12 @@ namespace CS
 		public T getComponent(int index)
 		{
 			return components[index];
+		}
+
+		override public void Deserialize(BinaryReader reader)
+		{
+			base.Deserialize(reader);
+			components = new T[size];
 		}
 	}
 

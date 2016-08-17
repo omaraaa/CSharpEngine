@@ -18,6 +18,8 @@ using FarseerPhysics.Factories;
 using FarseerPhysics.Controllers;
 using FarseerPhysics;
 
+using Lidgren.Network;
+
 namespace CS.Components
 {
 	class Transform
@@ -55,6 +57,20 @@ namespace CS.Components
 			}
 		}
 
+		public List<int> GetUpdated()
+		{
+			List<int> entities = new List<int>();
+			for(int i = 0; i < size; ++i)
+			{
+				if (entityIDs[i] == -1)
+					continue;
+
+				if (components[i].position != components[i].deltaPos)
+					entities.Add(entityIDs[i]);
+			}
+			return entities;
+		}
+
 		public override BaseSystem DeserializeConstructor(State state)
 		{
 			return new TransformSystem(state);
@@ -75,7 +91,6 @@ namespace CS.Components
 		public override void Deserialize(BinaryReader reader)
 		{
 			base.Deserialize(reader);
-			components = new Transform[size];
 			for(int i = 0; i < size; ++i)
 			{
 				Transform t = new Transform();
@@ -326,7 +341,6 @@ namespace CS.Components
 		override public void Deserialize(BinaryReader reader)
 		{
 			base.Deserialize(reader);
-			components = new Texture2[size];
 			for(int i = 0; i < size; ++i)
 			{
 				var name = reader.ReadString();
@@ -382,6 +396,18 @@ namespace CS.Components
 		public void SetEntity(int id)
 		{
 			followID = id;
+		}
+
+		public override void Serialize(BinaryWriter writer)
+		{
+			base.Serialize(writer);
+			writer.Write(followID);
+		}
+
+		public override void Deserialize(BinaryReader reader)
+		{
+			base.Deserialize(reader);
+			followID = reader.ReadInt32();
 		}
 	}
 

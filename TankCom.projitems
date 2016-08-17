@@ -19,7 +19,6 @@
     <Compile Include="$(MSBuildThisFileDirectory)CS\Util\Serialization.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Game1.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Game\Player.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Server.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="$(MSBuildThisFileDirectory)TODO.txt" />

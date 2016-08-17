@@ -482,7 +482,7 @@ namespace CS
 			}
 		}
 
-		public void Serialize(FileStream fs)
+		public void Serialize(Stream fs)
 		{
 			fs.Position = 0;
 			BinaryWriter writer = new BinaryWriter(fs);
@@ -504,7 +504,7 @@ namespace CS
 
 		}
 
-		public void Deserialize(FileStream fs)
+		public void Deserialize(Stream fs)
 		{
 			fs.Position = 0;
 			BinaryReader reader = new BinaryReader(fs);

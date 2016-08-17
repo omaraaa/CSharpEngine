@@ -47,7 +47,10 @@ namespace TankComProject
 		Random r;
 		int eid = -1;
 		int Clienteid = -1;
-		NetPeer peer;
+		NetClient peer;
+		NetServer server;
+		NetPeerConfiguration config;
+		NetPeerConfiguration clientConfig;
 
 		double MoonSharpFactorial()
 		{
@@ -84,17 +87,24 @@ namespace TankComProject
 		/// </summary>
 		protected override void Initialize()
 		{
-			var config = new NetPeerConfiguration("TankCom")
+			config = new NetPeerConfiguration("TankComServer")
 			{ Port = 12345 };
 			config.EnableMessageType(NetIncomingMessageType.ConnectionApproval);
 			config.AcceptIncomingConnections = true;
-			peer = new NetPeer(config);
-			peer.Start();
+
+			clientConfig = new NetPeerConfiguration("TankComClient");
+			clientConfig.EnableMessageType(NetIncomingMessageType.ConnectionApproval);
+			clientConfig.AcceptIncomingConnections = true;
+
+			peer = new NetClient(clientConfig);
+
+			server = new NetServer(config);
+
 #if ANDROID
 			fs = new FileStream(Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.Personal), "data"), FileMode.OpenOrCreate, FileAccess.ReadWrite);
 #else
-			fs = new FileStream("data", FileMode.OpenOrCreate, FileAccess.ReadWrite);
-#endif       
+			//fs = new FileStream("data", FileMode.OpenOrCreate, FileAccess.ReadWrite);
+#endif
 			// TODO: Add your initialization logic here
 			//graphics.PreferredBackBufferWidth = GraphicsDevice.DisplayMode.Width;
 			//graphics.PreferredBackBufferHeight = GraphicsDevice.DisplayMode.Height;
@@ -291,6 +301,7 @@ namespace TankComProject
 			}
 			if (Keyboard.GetState().IsKeyDown(Keys.F1) && eid == -1)
 			{
+				peer.Start();
 				var connection = peer.Connect("192.168.1.100", 12345);
 
 				Image img2 = new Image(state, "player", new Vector2(100, 100));
@@ -307,8 +318,9 @@ namespace TankComProject
 
 				
 			}
-			if (Keyboard.GetState().IsKeyDown(Keys.F2))
+			if (Keyboard.GetState().IsKeyDown(Keys.F2) && server.Status == NetPeerStatus.NotRunning)
 			{
+				server.Start();
 			}
 			NetIncomingMessage message;
 			while ((message = peer.ReadMessage()) != null)
@@ -335,7 +347,7 @@ namespace TankComProject
 							var msg = peer.CreateMessage();
 							msg.Write(1);
 							msg.Write(id);
-							peer.SendMessage(msg, message.SenderConnection, NetDeliveryMethod.ReliableOrdered);
+							peer.SendMessage(msg, NetDeliveryMethod.ReliableOrdered);
 						}
 						else if (type == 1)
 						{
@@ -413,6 +425,108 @@ namespace TankComProject
 				}
 			}
 
+			while ((message = server.ReadMessage()) != null)
+			{
+				switch (message.MessageType)
+				{
+					case NetIncomingMessageType.Data:
+						// handle custom messages
+						int type = message.ReadInt32();
+						if (type == 0)
+						{
+							//Clienteid = message.ReadInt32();
+							Image img2 = new Image(state, "player", new Vector2(100, 100));
+							var id = img2.id;
+							ddSys.AddEntity(id);
+							var textC = textureSys.getComponent(img2.textureIndex);
+							var sprite = new Sprite("player");
+							sprSys.AddComponent(id, sprite);
+							sprSys.Play("idle", id, 1, true);
+							textC.setScale(2, 2);
+							var player = new Player(id, physics, textC.textureRect, false);
+							playerSys.AddComponent(id, player);
+							//cameraFollow.SetEntity(id);
+							var msg = server.CreateMessage();
+							msg.Write(1);
+							msg.Write(id);
+							server.SendMessage(msg, message.SenderConnection, NetDeliveryMethod.ReliableOrdered);
+						}
+						else if (type == 1)
+						{
+							Clienteid = message.ReadInt32();
+						}
+						else if (type == 2)
+						{
+							var id = message.ReadInt32();
+							var x = message.ReadSingle();
+							var y = message.ReadSingle();
+
+							var ti = state.getComponentIndex(id, transSys.systemIndex);
+							var pi = state.getComponentIndex(id, physics.systemIndex);
+							if (ti != -1)
+							{
+								var t = transSys.getComponent(ti);
+								t.position.X = x;
+								t.position.Y = y;
+							}
+							if (pi != -1)
+							{
+								var p = physics.getComponent(pi);
+								var vel = new Vector2(message.ReadSingle(), message.ReadSingle());
+								p.LinearVelocity = vel;
+							}
+						}
+						else if (type == 3)
+						{
+							var id = message.ReadInt32();
+							if (id != -1)
+								state.RemoveEntity(id);
+
+							var msg = server.CreateMessage();
+							msg.Write(4);
+							server.SendMessage(msg, message.SenderConnection, NetDeliveryMethod.ReliableOrdered);
+						}
+						else if (type == 4)
+						{
+							Exit();
+						}
+						break;
+
+					case NetIncomingMessageType.StatusChanged:
+						// handle connection status messages
+						switch (message.SenderConnection.Status)
+						{
+							case NetConnectionStatus.Connected:
+								if (eid != -1)
+								{
+									var msg = server.CreateMessage();
+									msg.Write(0);
+									//msg.Write(eid);
+									server.SendMessage(msg, peer.Connections[0], NetDeliveryMethod.ReliableOrdered);
+								}
+								break;
+						}
+						break;
+
+					case NetIncomingMessageType.DebugMessage:
+						// handle debug messages
+						// (only received when compiled in DEBUG mode)
+						Console.WriteLine(message.ReadString());
+						break;
+					case NetIncomingMessageType.WarningMessage:
+						Console.WriteLine(message.ReadString());
+						break;
+					/* .. */
+					case NetIncomingMessageType.ConnectionApproval:
+						message.SenderConnection.Approve();
+						break;
+					/* .. */
+					default:
+						Console.WriteLine("unhandled message with type: "
+							+ message.MessageType);
+						break;
+				}
+			}
 
 			// TODO: Add your update logic here
 			var dmx = mousestate.X;

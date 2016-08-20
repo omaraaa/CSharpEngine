@@ -80,7 +80,7 @@ class PlayerSystem : ComponentSystem<Player>, ISysUpdateable
 		spriteSys = state.getSystem<SpriteSystem>();
 	}
 
-	public override BaseSystem DeserializeConstructor(State state)
+	public override BaseSystem DeserializeConstructor(State state, string name)
 	{
 		return new PlayerSystem(state);
 	}

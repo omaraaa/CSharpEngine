@@ -9,6 +9,12 @@ using Microsoft.Xna.Framework.Input.Touch;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGame.Utilities;
 
+using Lidgren.Network;
+
+using MoonSharp.Interpreter;
+using MoonSharp;
+
+
 namespace CS
 {
 
@@ -40,8 +46,10 @@ namespace CS
 
 		}
 
-		abstract public BaseSystem DeserializeConstructor(State state);
+		abstract public BaseSystem DeserializeConstructor(State state, string name);
 	}
+
+	
 
 	abstract class EntitySystem : BaseSystem
 	{
@@ -58,7 +66,7 @@ namespace CS
 			size = 0;
 		}
 
-		public int AddEntity(int id)
+		virtual public int AddEntity(int id)
 		{
 			var cindex = _state.getComponentIndex(id, systemIndex);
 			if (cindex != -1)
@@ -111,6 +119,10 @@ namespace CS
 		override public void Serialize(BinaryWriter writer)
 		{
 			base.Serialize(writer);
+			writer.Write(freeIndexes.Length);
+			foreach (var index in freeIndexes)
+				writer.Write(index);
+
 			writer.Write(size);
 			foreach (var e in entityIDs)
 			{
@@ -121,6 +133,12 @@ namespace CS
 		override public void Deserialize(BinaryReader reader)
 		{
 			base.Deserialize(reader);
+
+			int freesize = reader.ReadInt32();
+			freeIndexes = new int[freesize];
+			for (int i = 0; i < freesize; ++i)
+				freeIndexes[i] = reader.ReadInt32();
+
 			var s = reader.ReadInt32();
 			entityIDs = new int[s];
 			size = s;
@@ -163,7 +181,7 @@ namespace CS
 		virtual public int AddComponent(int id, T component)
 		{
 			var index = AddEntity(id);
-			if(index+1 >= size)
+			if(components.Length < size)
 				Array.Resize(ref components, size);
 			components[index] = component;
 			return index;
@@ -244,7 +262,9 @@ namespace CS
 		private uint[] updatableIndexes;
 		private uint[] renderableIndexes;
 
-		public int[][] entitiesIndexes;
+		private int[][] entitiesIndexes;
+		private int[] removedEntities;
+		private Stack<int> toRemoveEntities;
 
 		public Global G;
 		public Camera camera;
@@ -256,8 +276,21 @@ namespace CS
 			updatableIndexes = new uint[0];
 			renderableIndexes = new uint[0];
 			entitiesIndexes = new int[0][];
+			removedEntities = new int[0];
+			toRemoveEntities = new Stack<int>();
 			this.G = G;
+			if(G != null)
+				camera = new Camera(this);
+		}
+
+		protected void Initialize()
+		{
 			camera = new Camera(this);
+		}
+
+		public int EntitiesCount()
+		{
+			return entitiesIndexes.Length;
 		}
 
 		public uint RegisterSystem(BaseSystem system)
@@ -291,6 +324,7 @@ namespace CS
 
 		public void Update()
 		{
+			CleanUp();
 			foreach (uint index in updatableIndexes)
 			{
 				var sys = systems[index] as ISysUpdateable;
@@ -310,13 +344,22 @@ namespace CS
 
 		public int CreateEntity()
 		{
-			Array.Resize(ref entitiesIndexes, entitiesIndexes.Length+1);
-			entitiesIndexes[entitiesIndexes.Length - 1] = new int[systems.Length];
+			int index = 0;
+			if (removedEntities.Length != 0)
+			{
+				index = removedEntities[removedEntities.Length - 1];
+				Array.Resize(ref removedEntities, removedEntities.Length - 1);
+			} else
+			{
+				Array.Resize(ref entitiesIndexes, entitiesIndexes.Length + 1);
+				index = entitiesIndexes.Length - 1;
+			}
+			entitiesIndexes[index] = new int[systems.Length];
 			for(int i = 0; i < systems.Length; ++i)
 			{
-				entitiesIndexes[entitiesIndexes.Length - 1][i] = -1;
+				entitiesIndexes[index][i] = -1;
 			}
-			return entitiesIndexes.Length - 1;
+			return index;
 		}
 
 
@@ -332,7 +375,21 @@ namespace CS
 
 		public void RemoveEntity(int id)
 		{
-			for(int i = 0; i < entitiesIndexes[id].Length; ++i)
+			toRemoveEntities.Push(id);
+		}
+
+		private void CleanUp()
+		{
+			for(int i = 0; i < toRemoveEntities.Count; ++i)
+			{
+				var id = toRemoveEntities.Pop();
+				CleanEntity(id);
+			}
+		}
+
+		private void CleanEntity(int id)
+		{
+			for (int i = 0; i < entitiesIndexes[id].Length; ++i)
 			{
 				if (entitiesIndexes[id][i] != -1)
 				{
@@ -340,6 +397,9 @@ namespace CS
 					sys.RemoveEntity(id);
 				}
 			}
+
+			Array.Resize(ref removedEntities, removedEntities.Length + 1);
+			removedEntities[removedEntities.Length - 1] = id;
 		}
 
 		public int getComponentIndex(int entityID, uint systemID)
@@ -358,6 +418,17 @@ namespace CS
 			return null;
 		}
 
+		public BaseSystem getSystem(String name)
+		{
+			foreach (BaseSystem system in systems)
+			{
+				if (system.name == name)
+					return system;
+			}
+
+			return null;
+		}
+
 		protected State(SerializationInfo info, StreamingContext context)
 		{
 			renderableIndexes = (uint[]) info.GetValue("renderIndexes", typeof(uint[]));
@@ -371,6 +442,9 @@ namespace CS
 
 		public void Serialize(BinaryWriter writer)
 		{
+			writer.Write(removedEntities.Length);
+			foreach (int index in removedEntities)
+				writer.Write(index);
 
 			writer.Write(entitiesIndexes.Length);
 			for(int i = 0; i < entitiesIndexes.Length; ++i)
@@ -390,6 +464,13 @@ namespace CS
 
 		public void Deserialize(BinaryReader reader)
 		{
+			int removedSize = reader.ReadInt32();
+			removedEntities = new int[removedSize];
+			for(int i = 0; i < removedSize; ++i)
+			{
+				removedEntities[i] = reader.ReadInt32();
+			}
+
 
 			int entitiesSize = reader.ReadInt32();
 			entitiesIndexes = new int[entitiesSize][];
@@ -411,7 +492,7 @@ namespace CS
 				if (G.systemsConstructors.ContainsKey(name))
 				{
 					if(!sameName)
-						G.systemsConstructors[name](this);
+						G.systemsConstructors[name](this, name);
 					systems[i].Deserialize(reader);
 				}
 			}
@@ -420,11 +501,11 @@ namespace CS
 
 	delegate void FunctionDelegate(ref State state, uint id);
 
-	delegate BaseSystem DeserializationConstructor(State state);
+	delegate BaseSystem DeserializationConstructor(State state, string name);
 
 
 	[Serializable()]
-	class Global
+	class Global : State
 	{
 		private Dictionary<String, Texture2D> textures;
 		private State[] activeStates;
@@ -436,12 +517,14 @@ namespace CS
 		public KeyboardState keyboardState;
 		public Dictionary<String, DeserializationConstructor> systemsConstructors;
 
-		public Global(Game g)
+		public Global(Game g) : base(null)
 		{
 			game = g;
 			textures = new Dictionary<String, Texture2D>();
 			activeStates = new State[0];
 			systemsConstructors = new Dictionary<String, DeserializationConstructor>();
+			this.G = this;
+			Initialize();
 		}
 
 		public void Update(GameTime gametime)

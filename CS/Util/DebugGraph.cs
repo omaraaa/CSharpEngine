@@ -45,7 +45,7 @@ namespace Util
 		{
 			var width = texture.Width;
 			var height = texture.Height;
-			texture.GetData(data);
+			//texture.GetData(data);
 			Color c = Color.Red;
 
 			if(value > this.target)

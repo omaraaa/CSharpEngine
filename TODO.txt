@@ -1,5 +1,12 @@
 ﻿-binary farseer serialization DONE
 -lua scripting support
+	-test successful
+	-able to create systems in lua
+	-need to streamline it
 -networking
 	-test successful
 	-need to implement a serialization per entity api
+	-need to streamline it
+-entity serialization
+	-need to implement serialization support for an entity
+	-so you could sync entities when created

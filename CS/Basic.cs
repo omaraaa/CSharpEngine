@@ -20,8 +20,11 @@ using FarseerPhysics;
 
 using Lidgren.Network;
 
+using MoonSharp.Interpreter;
+
 namespace CS.Components
 {
+	[MoonSharpUserData]
 	class Transform
 	{
 		public Vector2 position;
@@ -32,10 +35,15 @@ namespace CS.Components
 			position = new Vector2(0,0);
 			deltaPos = new Vector2(0,0);
 		}
+
+		public void SetPosition(Vector2 pos)
+		{
+			position = pos;
+		}
 	}
 	class TransformSystem : ComponentSystem<Transform>, ISysUpdateable
 	{
-		public TransformSystem(State state) : base(state, "Transform")
+		public TransformSystem(State state) : base(state, "TransformSystem")
 		{
 
 		}
@@ -71,7 +79,7 @@ namespace CS.Components
 			return entities;
 		}
 
-		public override BaseSystem DeserializeConstructor(State state)
+		public override BaseSystem DeserializeConstructor(State state, string name)
 		{
 			return new TransformSystem(state);
 		}
@@ -127,7 +135,7 @@ namespace CS.Components
 				if (entity == -1)
 					continue;
 
-				var transfromIndex = _state.entitiesIndexes[entity][transform.systemIndex];
+				var transfromIndex = _state.getComponentIndex(entity, systemIndex);
 				var transformC = transform.getComponent(transfromIndex);
 				var pos = transformC.position;
 
@@ -150,7 +158,7 @@ namespace CS.Components
 			}
 		}
 
-		public override BaseSystem DeserializeConstructor(State state)
+		public override BaseSystem DeserializeConstructor(State state, string name)
 		{
 			return new MouseFollowSystem(state);
 		}
@@ -236,7 +244,7 @@ namespace CS.Components
 		TransformSystem transform;
 		PhysicsSystem physics;
 		
-		public TextureSystem(State state) : base(state, "Texture")
+		public TextureSystem(State state) : base(state, "TextureSystem")
 		{
 			_batch = new SpriteBatch(state.G.game.GraphicsDevice);
 			this.transform = state.getSystem<TransformSystem>();
@@ -269,7 +277,7 @@ namespace CS.Components
 				if (entityIDs[i] == -1)
 					continue;
 
-				var transfromIndex = _state.entitiesIndexes[entityIDs[i]][transform.systemIndex];
+				var transfromIndex = _state.getComponentIndex(entityIDs[i], transform.systemIndex);
 				var transformC = transform.getComponent(transfromIndex);
 				var textureC = components[i];
 
@@ -309,7 +317,7 @@ namespace CS.Components
 			return rect;
 		}
 
-		public override BaseSystem DeserializeConstructor(State state)
+		public override BaseSystem DeserializeConstructor(State state, string name)
 		{
 			return new TextureSystem(state);
 		}
@@ -367,7 +375,7 @@ namespace CS.Components
 
 	class CameraFollowSystem : BaseSystem, ISysUpdateable
 	{
-		int followID;
+		int followID = -1;
 		TransformSystem transSys;
 		TextureSystem textureSystem;
 		Rectangle rect;
@@ -378,18 +386,21 @@ namespace CS.Components
 			rect = new Rectangle(0, 0, 100, 100);
 		}
 
-		public override BaseSystem DeserializeConstructor(State state)
+		public override BaseSystem DeserializeConstructor(State state, string name)
 		{
 			return new CameraFollowSystem(state);
 		}
 
 		public void Update(Global G)
 		{
-			var index = _state.getComponentIndex(followID, transSys.systemIndex);
-			if(index != -1)
+			if (followID != -1)
 			{
-				var pos = transSys.getComponent(index).position;
-				_state.camera.SetPosition(pos);
+				var index = _state.getComponentIndex(followID, transSys.systemIndex);
+				if (index != -1)
+				{
+					var pos = transSys.getComponent(index).position;
+					_state.camera.SetPosition(pos);
+				}
 			}
 		}
 
@@ -516,7 +527,7 @@ namespace CS.Components
 
 		}
 
-		public override BaseSystem DeserializeConstructor(State state)
+		public override BaseSystem DeserializeConstructor(State state, string name)
 		{
 			return new DragAndDropSystem(state);
 		}
@@ -792,11 +803,99 @@ namespace CS.Components
 			return true;
 		}
 
-		public override BaseSystem DeserializeConstructor(State state)
+		public override BaseSystem DeserializeConstructor(State state, string name)
 		{
 			return new CollisionSystem(state);
 		}
 	}
+
+	delegate void TimerCallback(State state, int id);
+	class Timer
+	{
+		public float target;
+		public float count;
+		public bool repeat;
+		public bool active;
+		public TimerCallback callback;
+
+		public Timer(float target, bool repeat, TimerCallback callback)
+		{
+			this.target = target;
+			count = 0;
+			this.repeat = repeat;
+			this.callback = callback;
+			active = true;
+		}
+	}
+
+	
+
+	class TimerSystem : ComponentSystem<Timer[]>, ISysUpdateable
+	{
+		public TimerSystem(State state) : base(state, "TimerSystem")
+		{
+		}
+
+		public override BaseSystem DeserializeConstructor(State state, string name)
+		{
+			return new TimerSystem(state);
+		}
+
+		public void Update(Global G)
+		{
+			for(int i = 0; i < size; ++i)
+			{
+				if (entityIDs[i] == -1)
+					continue;
+
+				var arr = components[i];
+				for(int j = 0; j < arr.Length; ++j)
+				{
+					var t = arr[j];
+
+					if (!t.active)
+						continue;
+
+					t.count += G.dt;
+					if(t.count >= t.target)
+					{
+						t.callback(_state, entityIDs[i]);
+						if(!t.repeat)
+						{
+							t.active = false;
+						}
+						t.count = 0;
+					}
+				}
+			}
+		}
+		
+		public void AddTimer(int id, Timer timer)
+		{
+			int index = _state.getComponentIndex(id, systemIndex);
+			if(index == -1)
+			{
+				index = AddComponent(id, new Timer[1]);
+				components[index][0] = timer;
+			} else
+			{
+				var arr = components[index];
+				Array.Resize(ref arr, arr.Length + 1);
+				arr[arr.Length - 1] = timer;
+			}
+		}
+
+		public void AddKillTimer(int id, float time)
+		{
+			Timer t = new Timer(time, false, KillEntity);
+			AddTimer(id, t);
+		}
+
+		static public void KillEntity(State state, int id)
+		{
+			state.RemoveEntity(id);
+		}
+	}		
 }
 
 

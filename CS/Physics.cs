@@ -26,10 +26,10 @@ namespace CS.Components
 	class PhysicsObject
 	{
 
-		static public Body CreateBody(PhysicsSystem sys, int width, int height, BodyType bodytype = BodyType.Static)
+		static public Body CreateBody(PhysicsSystem sys, int width, int height, int bodytype = (int) BodyType.Dynamic)
 		{
 			var body = new Body(sys.world);
-			body.BodyType = bodytype;
+			body.BodyType = (BodyType) bodytype;
 			//body.Awake = false;
 			//body.SleepingAllowed = true;
 			//body.FixedRotation = true;
@@ -56,15 +56,15 @@ namespace CS.Components
 		SpriteBatch batch;
 
 
-		public PhysicsSystem(State state) : base(state, "FarseerPhysics")
+		public PhysicsSystem(State state) : base(state, "FarseerPhysicsSystem")
 		{
 			var G = state.G;
 			transformSys = state.getSystem<TransformSystem>();
 			ConvertUnits.SetDisplayUnitToSimUnitRatio(64);
 			world = new World(new Vector2(0, ConvertUnits.ToSimUnits(2000)));
 			//Settings.ContinuousPhysics = false;
-			Settings.VelocityIterations = 6;
-			Settings.PositionIterations = 2;
+			Settings.VelocityIterations = 1;
+			Settings.PositionIterations = 1;
 			//Settings.DefaultFixtureIgnoreCCDWith = Category.All;
 #if DEBUG
 			debugView = new DebugViewXNA(world);
@@ -84,8 +84,9 @@ namespace CS.Components
 
 		public override int AddComponent(int id, Body component)
 		{
+			var r = base.AddComponent(id, component);
 			world.ProcessChanges();
-			return base.AddComponent(id, component);
+			return r;
 		}
 
 		public void Render(Global G)
@@ -144,7 +145,7 @@ namespace CS.Components
 				}
 		}
 
-		public override BaseSystem DeserializeConstructor(State state)
+		public override BaseSystem DeserializeConstructor(State state, string name)
 		{
 			return new PhysicsSystem(state);
 		}
@@ -181,6 +182,13 @@ namespace CS.Components
 			debugView.LoadContent(_state.G.game.GraphicsDevice, _state.G.game.Content);
 			debugView.Enabled = true;
 #endif
+		}
+
+		public override void RemoveEntity(int id)
+		{
+			var index = _state.getComponentIndex(id, systemIndex);
+			world.RemoveBody(components[index]);
+			base.RemoveEntity(id);
 		}
 	}
 

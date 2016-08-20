@@ -98,7 +98,7 @@ namespace CS.Components
 			animations = new Dictionary<string, Animation>();
 		}
 
-		public override BaseSystem DeserializeConstructor(State state)
+		public override BaseSystem DeserializeConstructor(State state, string name)
 		{
 			return new SpriteSystem(state);
 		}

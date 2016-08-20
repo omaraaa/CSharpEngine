@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Input.Touch;
 using System;
+using System.Reflection;
 using System.Collections.Generic;
 using System.IO;
 using System.Diagnostics;
@@ -15,11 +16,16 @@ using Entities;
 using Lidgren.Network;
 using Lidgren;
 using MoonSharp.Interpreter;
+using System.Text;
+using MoonSharp.Interpreter.Loaders;
+
 
 namespace TankComProject
 {
 	
 	delegate void funcD(params object[] objs);
+
+	
 
 	/// <summary>
 	/// This is the main type for your game.
@@ -53,25 +59,21 @@ namespace TankComProject
 		NetPeerConfiguration config;
 		NetPeerConfiguration clientConfig;
 		float acc = 0;
-		float serverRate = 1 / 20f;
+		float serverRate = 1 / 60f;
+		int entitiesCount = 0;
 
-		double MoonSharpFactorial()
+		Assembly GetAssemblyByName(string name)
 		{
-			string script = @"    
-		-- defines a factorial function
-		function fact (n)
-			if (n == 0) then
-				return 1
-			else
-				return n*fact(n - 1)
-			end
-		end
-
-		return fact(5)";
-
-			DynValue res = Script.RunString(script);
-			return res.Number;
+			var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+			foreach(var a in assemblies)
+			{
+				if (a.GetName().Name == name)
+					return a;
+			}
+			return null;
 		}
+
+		
 
 		public Game1()
 		{
@@ -79,7 +81,6 @@ namespace TankComProject
 			Content.RootDirectory = "Content";
 			//TargetElapsedTime = new System.TimeSpan(0, 0, 0, 0, 33/2);
 			IsFixedTimeStep = false;
-
 		}
 
 		/// <summary>
@@ -101,6 +102,8 @@ namespace TankComProject
 
 #if ANDROID
 			fs = new FileStream(Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.Personal), "data"), FileMode.OpenOrCreate, FileAccess.ReadWrite);
+							peer.Start();
+				var connection = peer.Connect("192.168.1.100", 12345);		
 #else
 			//fs = new FileStream("data", FileMode.OpenOrCreate, FileAccess.ReadWrite);
 #endif
@@ -114,15 +117,20 @@ namespace TankComProject
 			fpsGraph = new DebugGraph(GraphicsDevice, new Rectangle(0, 50, 200, 25), 100, 60);
 
 			G = new Global(this);
+			var GLuaSys = new GlobalLuaSystem(G);
 
 			state = new State(G);
 			State guiState = new State(G);
+
 #if ANDROID
 			state.camera.scale = new Vector2(4, 4);
 			guiState.camera.scale = new Vector2(4, 4);
 #endif
 
+			var boxfunc = GLuaSys.luaScript.Globals.Get("createBoxCreator");
+			GLuaSys.luaScript.Call(boxfunc, state);
 			transSys = new TransformSystem(state);
+			
 			physics = new PhysicsSystem(state);
 			textureSys = new TextureSystem(state);
 			cameraFollow = new CameraFollowSystem(state);
@@ -131,8 +139,10 @@ namespace TankComProject
 			ddSys = new DragAndDropSystem(state);
 			collSys = new CollisionSystem(state);
 			playerSys = new PlayerSystem(state);
+			TimerSystem timerSys = new TimerSystem(state);
+			var gridfunc = GLuaSys.luaScript.Globals.Get("CreateGridSystem");
+			GLuaSys.luaScript.Call(gridfunc, state);
 
-			
 			TransformSystem transSys2 = new TransformSystem(guiState);
 			//PhysicsSystem physics2 = new PhysicsSystem(guiState);
 			TextureSystem textureSys2 = new TextureSystem(guiState);
@@ -154,29 +164,13 @@ namespace TankComProject
 
 			//state.RegisterSystem(transSys);
 			//state.RegisterSystem(textureSys);
-			for (int i = 0; i <0; ++i)
-			{
-				var e = state.CreateEntity();
-				Transform t = new Transform();
-				transSys.AddComponent(e, t);
+			
 
-				Texture2 texture = new Texture2(G, "SomeGuy1");
-				texture.setScale(1, 1);
-				t.position = new Vector2(4*i, 100);
-				textureSys.AddComponent(e, texture);
-				ddSys.AddEntity(e);
-
-
-				var p = PhysicsObject.CreateBody(physics, texture.textureRect.Width, texture.textureRect.Height, FarseerPhysics.Dynamics.BodyType.Dynamic);
-				//p.body.IsBullet = true;
-				physics.AddComponent(e, p);
-				//mousesys.AddEntity(e);
-			}
 			{
 				Image img = new Image(guiState, "cursor", new Vector2(0, 0), 0.1f);
 				mousesys2.AddEntity(img.id);
 			}
-
+			/*
 			var thickness = 32;
 			{
 				var e = state.CreateEntity();
@@ -192,10 +186,10 @@ namespace TankComProject
 				texture.setScale(2, 2);
 				textureSys.AddComponent(e, texture);
 
-				var p = PhysicsObject.CreateBody(physics, graphics.PreferredBackBufferWidth, thickness, FarseerPhysics.Dynamics.BodyType.Static);
+				var p = PhysicsObject.CreateBody(physics, graphics.PreferredBackBufferWidth, thickness, (int) FarseerPhysics.Dynamics.BodyType.Static);
 				physics.AddComponent(e, p);
 			}
-
+			
 			{
 				var e = state.CreateEntity();
 				Transform t = new Transform();
@@ -209,7 +203,7 @@ namespace TankComProject
 				texture.setScale(2, 2);
 				textureSys.AddComponent(e, texture);
 
-				var p = PhysicsObject.CreateBody(physics, graphics.PreferredBackBufferWidth, thickness, FarseerPhysics.Dynamics.BodyType.Static);
+				var p = PhysicsObject.CreateBody(physics, graphics.PreferredBackBufferWidth, thickness, (int)FarseerPhysics.Dynamics.BodyType.Static);
 				physics.AddComponent(e, p);
 			}
 			{
@@ -225,7 +219,7 @@ namespace TankComProject
 				texture.setScale(2, 2);
 				textureSys.AddComponent(e, texture);
 
-				var p = PhysicsObject.CreateBody(physics, thickness, graphics.PreferredBackBufferHeight, FarseerPhysics.Dynamics.BodyType.Static);
+				var p = PhysicsObject.CreateBody(physics, thickness, graphics.PreferredBackBufferHeight, (int)FarseerPhysics.Dynamics.BodyType.Static);
 				physics.AddComponent(e, p);
 			}
 			{
@@ -241,9 +235,10 @@ namespace TankComProject
 				texture.setScale(2, 2);
 				textureSys.AddComponent(e, texture);
 
-				var p = PhysicsObject.CreateBody(physics, thickness, graphics.PreferredBackBufferHeight, FarseerPhysics.Dynamics.BodyType.Static);
+				var p = PhysicsObject.CreateBody(physics, thickness, graphics.PreferredBackBufferHeight, (int)FarseerPhysics.Dynamics.BodyType.Static);
 				physics.AddComponent(e, p);
 			}
+			*/
 			G.ActivateState(state);
 			G.ActivateState(guiState);
 
@@ -351,6 +346,8 @@ namespace TankComProject
 						else if (type == 2)
 						{
 							var id = message.ReadInt32();
+							if (id >= state.EntitiesCount())
+								continue;
 							var x = message.ReadSingle();
 							var y = message.ReadSingle();
 
@@ -550,7 +547,7 @@ namespace TankComProject
 			mousestate = Mouse.GetState();
 			var touch = TouchPanel.GetState();
 			var scale = state.camera.matrix.Scale;
-			if (G.mouseState.RightButton == ButtonState.Pressed || touch.Count == 2)
+			/*if (G.mouseState.RightButton == ButtonState.Pressed || touch.Count == 2)
 			{
 				var e = state.CreateEntity();
 				Transform t = new Transform();
@@ -575,7 +572,7 @@ namespace TankComProject
 				ddSys.AddEntity(e);
 
 
-				var p = PhysicsObject.CreateBody(physics, texture.textureRect.Width, texture.textureRect.Height, FarseerPhysics.Dynamics.BodyType.Dynamic);
+				var p = PhysicsObject.CreateBody(physics, texture.textureRect.Width, texture.textureRect.Height, (int)FarseerPhysics.Dynamics.BodyType.Dynamic);
 				//p.body.IgnoreCCD = true;
 				//p.body.Restitution = 0;
 				//p.body.FixedRotation = true;
@@ -583,7 +580,7 @@ namespace TankComProject
 				//p.body.IsBullet = true;
 				physics.AddComponent(e, p);
 				//mousesys.AddEntity(e);
-			}
+			}*/
 			if (Clienteid != -1)
 			{
 				var msg = peer.CreateMessage();
@@ -601,6 +598,24 @@ namespace TankComProject
 			}
 			
 			G.Update(gameTime);
+			if(server.Status == NetPeerStatus.Running && entitiesCount != state.EntitiesCount())
+			{
+				var msg = server.CreateMessage();
+				msg.Write(1);
+				var s = new MemoryStream();
+				BinaryWriter writer = new BinaryWriter(s);
+				state.Serialize(writer);
+				writer.Flush();
+				s.Position = 0;
+				byte[] bytes = s.ToArray();
+				msg.Write(bytes.Length);
+				msg.Write(bytes);
+				//Clienteid = message.ReadInt32();
+				msg.Write(-1);
+				writer.Close();
+				server.SendToAll(msg, NetDeliveryMethod.ReliableOrdered);
+			}
+			entitiesCount = state.EntitiesCount();
 			acc += G.dt;
 			if (server.Status == NetPeerStatus.Running && acc >= serverRate)
 			{
@@ -618,7 +633,7 @@ namespace TankComProject
 					msg.Write(t.position.Y);
 					msg.Write(p.LinearVelocity.X);
 					msg.Write(p.LinearVelocity.Y);
-					server.SendToAll(msg, NetDeliveryMethod.ReliableOrdered);
+					server.SendToAll(msg, NetDeliveryMethod.ReliableUnordered);
 				}
 
 				acc -= serverRate;
@@ -639,7 +654,6 @@ namespace TankComProject
 				G.Deserialize(fs);
 				fs.Close();
 			}
-
 
 			base.Update(gameTime);
 		}

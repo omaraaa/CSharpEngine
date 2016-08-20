@@ -260,40 +260,42 @@ namespace CS.Components
 			}
 		}
 
-		public override void Serialize(BinaryWriter writer)
+
+		protected override void SerailizeComponent(ref Sprite component, BinaryWriter writer)
 		{
-			base.Serialize(writer);
-			for (int i = 0; i < size; ++i)
-			{
-				writer.Write(components[i].textureName);
-				writer.Write(components[i].currentAnimation.active);
-				writer.Write(components[i].currentAnimation.name);
-				writer.Write(components[i].currentAnimation.index);
-				writer.Write(components[i].currentAnimation.repeat);
-				writer.Write(components[i].currentAnimation.fps);
-			}
+			writer.Write(component.textureName);
+			writer.Write(component.currentAnimation.active);
+			writer.Write(component.currentAnimation.name);
+			writer.Write(component.currentAnimation.index);
+			writer.Write(component.currentAnimation.repeat);
+			writer.Write(component.currentAnimation.fps);
 		}
 
-		public override void Deserialize(BinaryReader reader)
+		protected override Sprite DeserailizeComponent(BinaryReader reader)
 		{
-			base.Deserialize(reader);
-			components = new Sprite[size];
-			for (int i = 0; i < size; ++i)
-			{
-				string textureName = reader.ReadString();
-				components[i] = new Sprite(textureName);
-				var active = reader.ReadBoolean();
-				var name = reader.ReadString();
-				var index = reader.ReadInt32();
-				var repeat = reader.ReadBoolean();
-				var fps = reader.ReadSingle();
+			string textureName = reader.ReadString();
+			Sprite spr = new Sprite(textureName);
+			var active = reader.ReadBoolean();
+			var name = reader.ReadString();
+			var index = reader.ReadInt32();
+			var repeat = reader.ReadBoolean();
+			var fps = reader.ReadSingle();
 
-				components[i].currentAnimation = animations[name];
-				components[i].currentAnimation.active = active;
-				components[i].currentAnimation.index = index;
-				components[i].currentAnimation.repeat = repeat;
-				components[i].currentAnimation.fps = fps;
-			}
+			spr.currentAnimation = animations[name];
+			spr.currentAnimation.active = active;
+			spr.currentAnimation.index = index;
+			spr.currentAnimation.repeat = repeat;
+			spr.currentAnimation.fps = fps;
+
+			return spr;
+		}
+
+		public override void SerializeSystem(BinaryWriter writer)
+		{
+		}
+
+		public override void DeserializeSystem(BinaryReader reader)
+		{
 		}
 	}
 

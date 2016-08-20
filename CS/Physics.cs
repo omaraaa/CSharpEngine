@@ -55,6 +55,7 @@ namespace CS.Components
 #endif
 		SpriteBatch batch;
 
+		bool isSerializingWhole = false;
 
 		public PhysicsSystem(State state) : base(state, "FarseerPhysicsSystem")
 		{
@@ -150,45 +151,48 @@ namespace CS.Components
 			return new PhysicsSystem(state);
 		}
 
-		public override void Serialize(BinaryWriter writer)
-		{
-			base.Serialize(writer);
-
-			WorldSerializer.Serialize(world, writer);
-			for (int i = 0; i < world.BodyList.Count; ++i)
-			{
-				for(int j = 0; j < size; ++j)
-				{
-					if(components[j] == world.BodyList[i])
-						writer.Write(i);
-
-				}
-			}
-		}
-
-		public override void Deserialize(BinaryReader reader)
-		{
-			base.Deserialize(reader);
-
-			world = new World(Vector2.Zero);
-			WorldSerializer.Deserialize(world, reader);
-			for(int i = 0; i < size; ++i)
-			{
-				int id = reader.ReadInt32();
-				components[i] = world.BodyList[id];
-			}
-#if DEBUG
-			debugView = new DebugViewXNA(world);
-			debugView.LoadContent(_state.G.game.GraphicsDevice, _state.G.game.Content);
-			debugView.Enabled = true;
-#endif
-		}
-
 		public override void RemoveEntity(int id)
 		{
 			var index = _state.getComponentIndex(id, systemIndex);
 			world.RemoveBody(components[index]);
 			base.RemoveEntity(id);
+		}
+
+		protected override void SerailizeComponent(ref Body component, BinaryWriter writer)
+		{
+			WorldBinarySerializer.SerializeBody(component, writer);
+		}
+
+		protected override Body DeserailizeComponent(BinaryReader reader)
+		{
+			Body b = WorldBinaryDeserializer.DeserializeBody(world, reader);
+			return b;
+		}
+
+		public override void SerializeSystem(BinaryWriter writer)
+		{
+			WorldSerializer.Serialize(world, writer);
+		}
+
+		public override void DeserializeSystem(BinaryReader reader)
+		{
+			world = new World(Vector2.Zero);
+			WorldSerializer.Deserialize(world, reader);
+
+
+		}
+
+		protected override void postDeserialization(BinaryReader reader)
+		{
+			world.ProcessChanges();
+#if DEBUG
+			debugView = new DebugViewXNA(world);
+			debugView.LoadContent(_state.G.game.GraphicsDevice, _state.G.game.Content);
+			debugView.Enabled = true;
+#endif
+
+
+			base.postDeserialization(reader);
 		}
 	}
 

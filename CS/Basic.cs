@@ -84,30 +84,30 @@ namespace CS.Components
 			return new TransformSystem(state);
 		}
 
-		public override void Serialize(BinaryWriter writer)
+		protected override void SerailizeComponent(ref Transform component, BinaryWriter writer)
 		{
-			base.Serialize(writer);
-			foreach (Transform t in components)
-			{
-				writer.Write(t.position.X);
-				writer.Write(t.position.Y);
-				writer.Write(t.deltaPos.Y);
-				writer.Write(t.deltaPos.Y);
-			}
+			writer.Write(component.position.X);
+			writer.Write(component.position.Y);
+			writer.Write(component.deltaPos.Y);
+			writer.Write(component.deltaPos.Y);
 		}
 
-		public override void Deserialize(BinaryReader reader)
+		protected override Transform DeserailizeComponent(BinaryReader reader)
 		{
-			base.Deserialize(reader);
-			for(int i = 0; i < size; ++i)
-			{
-				Transform t = new Transform();
-				t.position.X = reader.ReadSingle();
-				t.position.Y = reader.ReadSingle();
-				t.deltaPos.X = reader.ReadSingle();
-				t.deltaPos.Y = reader.ReadSingle();
-				components[i] = t;
-			}
+			Transform t = new Transform();
+			t.position.X = reader.ReadSingle();
+			t.position.Y = reader.ReadSingle();
+			t.deltaPos.X = reader.ReadSingle();
+			t.deltaPos.Y = reader.ReadSingle();
+			return t;
+		}
+
+		public override void SerializeSystem(BinaryWriter writer)
+		{
+		}
+
+		public override void DeserializeSystem(BinaryReader reader)
+		{
 		}
 	}
 
@@ -161,6 +161,14 @@ namespace CS.Components
 		public override BaseSystem DeserializeConstructor(State state, string name)
 		{
 			return new MouseFollowSystem(state);
+		}
+
+		public override void SerializeSystem(BinaryWriter writer)
+		{
+		}
+
+		public override void DeserializeSystem(BinaryReader reader)
+		{
 		}
 	}
 
@@ -322,54 +330,55 @@ namespace CS.Components
 			return new TextureSystem(state);
 		}
 
-		override public void Serialize(BinaryWriter writer)
+
+		protected override void SerailizeComponent(ref Texture2 t, BinaryWriter writer)
 		{
-			base.Serialize(writer);
-			foreach(Texture2 t in components)
-			{
-				writer.Write(t.textureName);
-				writer.Write(t.layerDepth);
-				writer.Write(t.offset.X);
-				writer.Write(t.offset.Y);
-				writer.Write(t.scale.X);
-				writer.Write(t.scale.Y);
-				writer.Write(t.origin.X);
-				writer.Write(t.origin.Y);
-				writer.Write(t.textureRect.X);
-				writer.Write(t.textureRect.Y);
-				writer.Write(t.textureRect.Width);
-				writer.Write(t.textureRect.Height);
-				writer.Write(t.srcRect.X);
-				writer.Write(t.srcRect.Y);
-				writer.Write(t.srcRect.Width);
-				writer.Write(t.srcRect.Height);
-			}
+			writer.Write(t.textureName);
+			writer.Write(t.layerDepth);
+			writer.Write(t.offset.X);
+			writer.Write(t.offset.Y);
+			writer.Write(t.scale.X);
+			writer.Write(t.scale.Y);
+			writer.Write(t.origin.X);
+			writer.Write(t.origin.Y);
+			writer.Write(t.textureRect.X);
+			writer.Write(t.textureRect.Y);
+			writer.Write(t.textureRect.Width);
+			writer.Write(t.textureRect.Height);
+			writer.Write(t.srcRect.X);
+			writer.Write(t.srcRect.Y);
+			writer.Write(t.srcRect.Width);
+			writer.Write(t.srcRect.Height);
 		}
 
-		override public void Deserialize(BinaryReader reader)
+		protected override Texture2 DeserailizeComponent(BinaryReader reader)
 		{
-			base.Deserialize(reader);
-			for(int i = 0; i < size; ++i)
-			{
-				var name = reader.ReadString();
-				var layer = reader.ReadInt32();
-				Texture2 t = new Texture2(_state.G, name, layer);
-				t.offset.X = reader.ReadSingle();
-				t.offset.Y = reader.ReadSingle();
-				t.scale.X = reader.ReadSingle();
-				t.scale.Y = reader.ReadSingle();
-				t.origin.X = reader.ReadSingle();
-				t.origin.Y = reader.ReadSingle();
-				t.textureRect.X = reader.ReadInt32();
-				t.textureRect.Y = reader.ReadInt32();
-				t.textureRect.Width = reader.ReadInt32();
-				t.textureRect.Height = reader.ReadInt32();
-				t.srcRect.X = reader.ReadInt32();
-				t.srcRect.Y = reader.ReadInt32();
-				t.srcRect.Width = reader.ReadInt32();
-				t.srcRect.Height = reader.ReadInt32();
-				components[i] = t;
-			}
+			var name = reader.ReadString();
+			var layer = reader.ReadInt32();
+			Texture2 t = new Texture2(_state.G, name, layer);
+			t.offset.X = reader.ReadSingle();
+			t.offset.Y = reader.ReadSingle();
+			t.scale.X = reader.ReadSingle();
+			t.scale.Y = reader.ReadSingle();
+			t.origin.X = reader.ReadSingle();
+			t.origin.Y = reader.ReadSingle();
+			t.textureRect.X = reader.ReadInt32();
+			t.textureRect.Y = reader.ReadInt32();
+			t.textureRect.Width = reader.ReadInt32();
+			t.textureRect.Height = reader.ReadInt32();
+			t.srcRect.X = reader.ReadInt32();
+			t.srcRect.Y = reader.ReadInt32();
+			t.srcRect.Width = reader.ReadInt32();
+			t.srcRect.Height = reader.ReadInt32();
+			return t;
+		}
+
+		public override void SerializeSystem(BinaryWriter writer)
+		{
+		}
+
+		public override void DeserializeSystem(BinaryReader reader)
+		{
 		}
 	}
 
@@ -419,6 +428,14 @@ namespace CS.Components
 		{
 			base.Deserialize(reader);
 			followID = reader.ReadInt32();
+		}
+
+		public override void SerializeSystem(BinaryWriter writer)
+		{
+		}
+
+		public override void DeserializeSystem(BinaryReader reader)
+		{
 		}
 	}
 
@@ -530,6 +547,14 @@ namespace CS.Components
 		public override BaseSystem DeserializeConstructor(State state, string name)
 		{
 			return new DragAndDropSystem(state);
+		}
+
+		public override void SerializeSystem(BinaryWriter writer)
+		{
+		}
+
+		public override void DeserializeSystem(BinaryReader reader)
+		{
 		}
 	}
 
@@ -807,6 +832,26 @@ namespace CS.Components
 		{
 			return new CollisionSystem(state);
 		}
+
+		protected override void SerailizeComponent(ref colliderComponent component, BinaryWriter writer)
+		{
+			throw new NotImplementedException();
+		}
+
+		protected override colliderComponent DeserailizeComponent(BinaryReader reader)
+		{
+			throw new NotImplementedException();
+		}
+
+		public override void SerializeSystem(BinaryWriter writer)
+		{
+			throw new NotImplementedException();
+		}
+
+		public override void DeserializeSystem(BinaryReader reader)
+		{
+			throw new NotImplementedException();
+		}
 	}
 
 	delegate void TimerCallback(State state, int id);
@@ -816,14 +861,16 @@ namespace CS.Components
 		public float count;
 		public bool repeat;
 		public bool active;
+		public string callbackName;
 		public TimerCallback callback;
 
-		public Timer(float target, bool repeat, TimerCallback callback)
+		public Timer(float target, bool repeat, string callbackName)
 		{
 			this.target = target;
 			count = 0;
 			this.repeat = repeat;
-			this.callback = callback;
+			this.callbackName = callbackName;
+			this.callback = TimerSystem.callbacks[callbackName];
 			active = true;
 		}
 	}
@@ -832,8 +879,11 @@ namespace CS.Components
 
 	class TimerSystem : ComponentSystem<Timer[]>, ISysUpdateable
 	{
+		static public Dictionary<string, TimerCallback> callbacks = new Dictionary<string, TimerCallback>();
+
 		public TimerSystem(State state) : base(state, "TimerSystem")
 		{
+			callbacks["KillEntity"] = KillEntity;
 		}
 
 		public override BaseSystem DeserializeConstructor(State state, string name)
@@ -887,13 +937,54 @@ namespace CS.Components
 
 		public void AddKillTimer(int id, float time)
 		{
-			Timer t = new Timer(time, false, KillEntity);
+			Timer t = new Timer(time, false, "KillEntity");
 			AddTimer(id, t);
 		}
 
 		static public void KillEntity(State state, int id)
 		{
 			state.RemoveEntity(id);
+		}
+
+		protected override void SerailizeComponent(ref Timer[] component, BinaryWriter writer)
+		{
+			writer.Write(component.Length);
+			foreach(Timer t in component)
+			{
+				writer.Write(t.active);
+				writer.Write(t.callbackName);
+				writer.Write(t.count);
+				writer.Write(t.repeat);
+				writer.Write(t.target);
+			}
+		}
+
+		protected override Timer[] DeserailizeComponent(BinaryReader reader)
+		{
+			var length = reader.ReadInt32();
+			Timer[] timers = new Timer[length];
+			for(int i = 0; i < length; ++i)
+			{
+				var active = reader.ReadBoolean();
+				var callbackString = reader.ReadString();
+				var count = reader.ReadSingle();
+				var repeat = reader.ReadBoolean();
+				var target = reader.ReadSingle();
+
+				timers[i] = new Timer(target, repeat, callbackString);
+				timers[i].active = active;
+				timers[i].count = count;
+			}
+
+			return timers;
+		}
+
+		public override void SerializeSystem(BinaryWriter writer)
+		{
+		}
+
+		public override void DeserializeSystem(BinaryReader reader)
+		{
 		}
 	}		
 }

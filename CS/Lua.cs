@@ -125,6 +125,14 @@ namespace CS.Components
 
 			//luaState.LoadFile(Content.RootDirectory + "/systems.lua");
 		}
+
+		public override void SerializeSystem(BinaryWriter writer)
+		{
+		}
+
+		public override void DeserializeSystem(BinaryReader reader)
+		{
+		}
 	}
 
 	class LuaSystem : BaseSystem, ISysUpdateable
@@ -164,25 +172,6 @@ namespace CS.Components
 			UpdateFunction = luaScript.Globals.Get(functionName);
 		}
 
-		public override void Serialize(BinaryWriter writer)
-		{
-			base.Serialize(writer);
-
-			writer.Write(InitFunctionName);
-			writer.Write(UpdateFunctionName);
-		}
-
-		public override void Deserialize(BinaryReader reader)
-		{
-			base.Deserialize(reader);
-
-			var initName = reader.ReadString();
-			SetInitFunction(initName);
-
-			var updateName = reader.ReadString();
-			SetUpdateFunction(updateName);
-		}
-
 		public override BaseSystem DeserializeConstructor(State state, string name)
 		{
 			return new LuaSystem(state, name);
@@ -198,6 +187,21 @@ namespace CS.Components
 
 			if (UpdateFunctionName != "")
 				luaScript.Call(UpdateFunction, this, _state);
+		}
+
+		public override void SerializeSystem(BinaryWriter writer)
+		{
+			writer.Write(InitFunctionName);
+			writer.Write(UpdateFunctionName);
+		}
+
+		public override void DeserializeSystem(BinaryReader reader)
+		{
+			var initName = reader.ReadString();
+			SetInitFunction(initName);
+
+			var updateName = reader.ReadString();
+			SetUpdateFunction(updateName);
 		}
 	}
 
@@ -269,32 +273,6 @@ namespace CS.Components
 			AddEntityFunctionName = functionName;
 			AddEntityFunction = luaScript.Globals.Get(functionName);
 		}
-		public override void Serialize(BinaryWriter writer)
-		{
-			base.Serialize(writer);
-
-			writer.Write(InitFunctionName);
-			writer.Write(PreUpdateFunctionName);
-			writer.Write(EntityUpdateFunctionName);
-			writer.Write(RemoveEntityFunctionName);
-			writer.Write(AddEntityFunctionName);
-		}
-
-		public override void Deserialize(BinaryReader reader)
-		{
-			base.Deserialize(reader);
-
-			var initName = reader.ReadString();
-			SetInitFunction(initName);
-			var preupdateName = reader.ReadString();
-			SetPreUpdateFunction(preupdateName);
-			var entityupdate = reader.ReadString();
-			SetEntityUpdateFunction(entityupdate);
-			var remove = reader.ReadString();
-			SetRemoveEntityFunction(remove);
-			var add = reader.ReadString();
-			SetAddEntityFunction(add);
-		}
 
 		public override BaseSystem DeserializeConstructor(State state, string name)
 		{
@@ -335,6 +313,30 @@ namespace CS.Components
 				luaScript.Call(RemoveEntityFunction, this, _state, id);
 
 			base.RemoveEntity(id);
+		}
+
+		public override void SerializeSystem(BinaryWriter writer)
+		{
+
+			writer.Write(InitFunctionName);
+			writer.Write(PreUpdateFunctionName);
+			writer.Write(EntityUpdateFunctionName);
+			writer.Write(RemoveEntityFunctionName);
+			writer.Write(AddEntityFunctionName);
+		}
+
+		public override void DeserializeSystem(BinaryReader reader)
+		{
+			var initName = reader.ReadString();
+			SetInitFunction(initName);
+			var preupdateName = reader.ReadString();
+			SetPreUpdateFunction(preupdateName);
+			var entityupdate = reader.ReadString();
+			SetEntityUpdateFunction(entityupdate);
+			var remove = reader.ReadString();
+			SetRemoveEntityFunction(remove);
+			var add = reader.ReadString();
+			SetAddEntityFunction(add);
 		}
 	}
 

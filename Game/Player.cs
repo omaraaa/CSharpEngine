@@ -165,34 +165,6 @@ class PlayerSystem : ComponentSystem<Player>, ISysUpdateable
 		}
 	}
 
-	public override void Serialize(BinaryWriter writer)
-	{
-		base.Serialize(writer);
-		for (int i = 0; i < physics.world.BodyList.Count; ++i)
-		{
-			var b = physics.world.BodyList[i];
-			foreach (Player p in components)
-			{
-				if (b.BodyId == p.body.BodyId)
-					writer.Write(i);
-			}
-		}
-	}
-
-	public override void Deserialize(BinaryReader reader)
-	{
-		base.Deserialize(reader);
-		for(int i = 0; i < size; ++i)
-		{
-			int body = reader.ReadInt32();
-
-			Player p = new Player(physics.world, body);
-			
-
-			components[i] = p;
-		}
-	}
-
 	public override void RemoveEntity(int id)
 	{
 		var index = _state.getComponentIndex(id, systemIndex);
@@ -214,5 +186,30 @@ class PlayerSystem : ComponentSystem<Player>, ISysUpdateable
 
 			components[i].isControllable = false;
 		}
+	}
+
+	protected override void SerailizeComponent(ref Player component, BinaryWriter writer)
+	{
+		for (int i = 0; i < physics.world.BodyList.Count; ++i)
+		{
+			var b = physics.world.BodyList[i];
+			if (b.BodyId == component.body.BodyId)
+				writer.Write(i);
+		}
+	}
+
+	protected override Player DeserailizeComponent(BinaryReader reader)
+	{
+		int body = reader.ReadInt32();
+		Player p = new Player(physics.world, body);
+		return p;
+	}
+
+	public override void SerializeSystem(BinaryWriter writer)
+	{
+	}
+
+	public override void DeserializeSystem(BinaryReader reader)
+	{
 	}
 }

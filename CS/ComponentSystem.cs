@@ -36,14 +36,17 @@ namespace CS
 			state.G.RegisterSystemSerialization(name, DeserializeConstructor);
 		}
 
+		abstract public void SerializeSystem(BinaryWriter writer);
+		abstract public void DeserializeSystem(BinaryReader reader);
+
 		virtual public void Serialize(BinaryWriter writer)
 		{
-
+			SerializeSystem(writer);
 		}
 
 		virtual public void Deserialize(BinaryReader reader)
 		{
-
+			DeserializeSystem(reader);
 		}
 
 		abstract public BaseSystem DeserializeConstructor(State state, string name);
@@ -114,6 +117,21 @@ namespace CS
 				return true;
 			else
 				return false;
+		}
+
+		virtual public void SerializeEntity(int index, BinaryWriter writer)
+		{
+
+		}
+		virtual public void DeserializeEntity(int id, int index, BinaryReader reader)
+		{
+			if(index >= size)
+			{
+				AddEntity(id);
+			} else
+			{
+				entityIDs[index] = id;
+			}
 		}
 
 		override public void Serialize(BinaryWriter writer)
@@ -192,10 +210,57 @@ namespace CS
 			return components[index];
 		}
 
+		public override void Serialize(BinaryWriter writer)
+		{
+			base.Serialize(writer);
+			for(int i = 0; i < size; ++i)
+			{
+				SerailizeComponent(ref components[i], writer);
+			}
+			postSerialization(writer);
+		}
+
 		override public void Deserialize(BinaryReader reader)
 		{
 			base.Deserialize(reader);
 			components = new T[size];
+			for (int i = 0; i < size; ++i)
+			{
+				components[i] = DeserailizeComponent(reader);
+			}
+			postDeserialization(reader);
+		}
+
+		protected abstract void SerailizeComponent(ref T component, BinaryWriter writer);
+		public override void SerializeEntity(int index, BinaryWriter writer)
+		{
+			SerailizeComponent(ref components[index], writer);
+			base.SerializeEntity(index, writer);
+		}
+
+		protected abstract T DeserailizeComponent(BinaryReader reader);
+		public override void DeserializeEntity(int id, int index, BinaryReader reader)
+		{
+			T component = DeserailizeComponent(reader);
+			if (index >= size)
+			{
+				AddComponent(index, component);
+			}
+			else
+			{
+				components[index] = component;
+				base.DeserializeEntity(id, index, reader);
+			}
+		}
+
+		virtual protected void postSerialization(BinaryWriter writer)
+		{
+
+		}
+
+		virtual protected void postDeserialization(BinaryReader reader)
+		{
+
 		}
 	}
 
@@ -440,6 +505,43 @@ namespace CS
 
 		}
 
+		public void SerializeEntity(int id, BinaryWriter writer)
+		{
+			writer.Write(id);
+			writer.Write(entitiesIndexes[id].Length);
+			for (int i = 0; i < entitiesIndexes[id].Length; ++i)
+			{
+				var index = entitiesIndexes[id][i];
+				writer.Write(index);
+
+				if(index != -1)
+				{
+					var sys = systems[i] as EntitySystem;
+					sys.SerializeEntity(index, writer);
+				}
+			}
+		}
+
+		public void DeserializeEntity(BinaryReader reader)
+		{
+			var id = reader.ReadInt32();
+			var length = reader.ReadInt32();
+
+			entitiesIndexes[id] = new int[length];
+
+			for(int i = 0; i < length; ++i)
+			{
+				var index = reader.ReadInt32();
+				entitiesIndexes[id][i] = index;
+
+				if(index != -1)
+				{
+					var sys = systems[i] as EntitySystem;
+					sys.DeserializeEntity(id, index, reader);
+				}
+			}
+		}
+
 		public void Serialize(BinaryWriter writer)
 		{
 			writer.Write(removedEntities.Length);
@@ -579,6 +681,8 @@ namespace CS
 			BinaryWriter writer = new BinaryWriter(fs);
 			writer.BaseStream.Position = 0;
 
+			base.Serialize(writer);
+
 			//serialize textures names
 			/*formatter.Serialize(fs, textures.Count);
 			foreach(var pair in textures)
@@ -600,6 +704,8 @@ namespace CS
 			fs.Position = 0;
 			BinaryReader reader = new BinaryReader(fs);
 			reader.BaseStream.Position = 0;
+
+			base.Deserialize(reader);
 
 			//load textures
 			/*var texturesCount = (int) formatter.Deserialize(fs);

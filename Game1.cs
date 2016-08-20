@@ -137,7 +137,6 @@ namespace TankComProject
 			sprSys = new SpriteSystem(state);
 			mousesys = new MouseFollowSystem(state);
 			ddSys = new DragAndDropSystem(state);
-			collSys = new CollisionSystem(state);
 			playerSys = new PlayerSystem(state);
 			TimerSystem timerSys = new TimerSystem(state);
 			var gridfunc = GLuaSys.luaScript.Globals.Get("CreateGridSystem");
@@ -150,7 +149,6 @@ namespace TankComProject
 			SpriteSystem sprSys2 = new SpriteSystem(guiState);
 			MouseFollowSystem mousesys2 = new MouseFollowSystem(guiState);
 			DragAndDropSystem ddSys2 = new DragAndDropSystem(guiState);
-			CollisionSystem collSys2 = new CollisionSystem(guiState);
 			//PlayerSystem playerSys2 = new PlayerSystem(guiState);
 			
 

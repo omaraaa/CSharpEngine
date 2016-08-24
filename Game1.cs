@@ -118,6 +118,7 @@ namespace TankComProject
 
 			G = new Global(this);
 			var GLuaSys = new GlobalLuaSystem(G);
+			var fontSys = new FontSystem(G);
 
 			state = new State(G);
 			State guiState = new State(G);
@@ -144,6 +145,7 @@ namespace TankComProject
 
 			TransformSystem transSys2 = new TransformSystem(guiState);
 			//PhysicsSystem physics2 = new PhysicsSystem(guiState);
+			var textSys = new TextRenderingSystem(guiState);
 			TextureSystem textureSys2 = new TextureSystem(guiState);
 			//CameraFollowSystem cameraFollow2 = new CameraFollowSystem(guiState);
 			SpriteSystem sprSys2 = new SpriteSystem(guiState);
@@ -167,6 +169,13 @@ namespace TankComProject
 			{
 				Image img = new Image(guiState, "cursor", Vector2.Zero, new Vector2(9, 9) , 0.1f);
 				mousesys2.AddEntity(img.id);
+
+				Text textObj = new Text();
+				textObj.Color = Color.White;
+				textObj.SetFont(fontSys, "font");
+				textObj.String = "TESTING";
+
+				textSys.AddComponent(img.id, textObj);
 			}
 			/*
 			var thickness = 32;
@@ -235,8 +244,8 @@ namespace TankComProject
 
 				var p = PhysicsObject.CreateBody(physics, thickness, graphics.PreferredBackBufferHeight, (int)FarseerPhysics.Dynamics.BodyType.Static);
 				physics.AddComponent(e, p);
-			}
-			*/
+			}*/
+			
 			G.ActivateState(state);
 			G.ActivateState(guiState);
 

@@ -235,19 +235,79 @@ namespace CS.Components
 		}
 	}
 
+	class FontSystem : BaseSystem
+	{
+		Dictionary<string, SpriteFont> fonts;
+
+		public FontSystem(State state) : base(state, "FontSystem")
+		{
+			fonts = new Dictionary<string, SpriteFont>();
+		}
+
+		public override BaseSystem DeserializeConstructor(State state, string name)
+		{
+			return new FontSystem(state);
+		}
+
+		public override void DeserializeSystem(BinaryReader reader)
+		{
+			var count = reader.ReadInt32();
+			for(int i = 0; i < count; ++i)
+			{
+				var name = reader.ReadString();
+				LoadFont(name);
+			}
+		}
+
+		public override void SerializeSystem(BinaryWriter writer)
+		{
+			writer.Write(fonts.Count);
+			foreach(var pair in fonts)
+			{
+				writer.Write(pair.Key);
+			}
+		}
+
+		public SpriteFont LoadFont(string name)
+		{
+			if (!fonts.ContainsKey(name))
+			{
+				var content = _state.G.game.Content;
+				var font = content.Load<SpriteFont>(name);
+				fonts[name] = font;
+				return font;
+			}  else
+			{
+				return fonts[name];
+			}
+		}
+
+	}
+
 	class Text
 	{
-		String str;
-		Rectangle bounds;
+		public String String { get; set; }
+		public Rectangle Bounds { get; set; }
+		public Vector2 Position { get; set; }
+		public SpriteFont Font { get; private set; }
+		public string FontName { get; private set; }
+		public Color Color { get; set; }
+
+		public void SetFont(FontSystem fontSys, string name)
+		{
+			Font = fontSys.LoadFont(name);
+			FontName = name;
+		}
 	}
 
 	class TextRenderingSystem : ComponentSystem<Text>, ISysUpdateable, ISysRenderable
 	{
-
+		FontSystem fontSys;
 		TransformSystem tranSys;
 		public TextRenderingSystem(State state) : base(state, "TextRenderingSystem")
 		{
 			Batch = new SpriteBatch(state.G.game.GraphicsDevice);
+			fontSys = state.G.getSystem<FontSystem>();
 			tranSys = state.getSystem<TransformSystem>();
 		}
 
@@ -264,7 +324,6 @@ namespace CS.Components
 
 		public override void DeserializeSystem(BinaryReader reader)
 		{
-			throw new NotImplementedException();
 		}
 
 		public void Render(Global G)
@@ -279,29 +338,51 @@ namespace CS.Components
 				if(tranSys.ContainsEntity(entityIDs[i], ref transIndex))
 				{
 					var trans = tranSys.getComponent(transIndex);
-
+					textC.Position = trans.position;
 				}
+				Batch.Begin();
+				Batch.DrawString(textC.Font, textC.String, textC.Position, textC.Color);
+				Batch.End();
 			}
 		}
 
 		public override void SerializeSystem(BinaryWriter writer)
 		{
-			throw new NotImplementedException();
 		}
 
 		public void Update(Global G)
 		{
-			throw new NotImplementedException();
+			
 		}
 
 		protected override Text DeserailizeComponent(BinaryReader reader)
 		{
-			throw new NotImplementedException();
+			Text text = new Text();
+			text.String = reader.ReadString();
+			var x = reader.ReadSingle();
+			var y = reader.ReadSingle();
+			text.Position = new Vector2(x, y);
+			var fontName = reader.ReadString();
+			text.SetFont(fontSys, fontName);
+			var r = reader.ReadByte();
+			var g = reader.ReadByte();
+			var b = reader.ReadByte();
+			var a = reader.ReadByte();
+			text.Color = new Color(r, g, b, a);
+
+			return text;
 		}
 
 		protected override void SerailizeComponent(ref Text component, BinaryWriter writer)
 		{
-			throw new NotImplementedException();
+			writer.Write(component.String);
+			writer.Write(component.Position.X);
+			writer.Write(component.Position.Y);
+			writer.Write(component.FontName);
+			writer.Write(component.Color.R);
+			writer.Write(component.Color.G);
+			writer.Write(component.Color.B);
+			writer.Write(component.Color.A);
 		}
 	}
 }

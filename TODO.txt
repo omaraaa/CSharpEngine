@@ -7,6 +7,7 @@
 	-test successful
 	-need to implement a serialization per entity api
 	-need to streamline it
--entity serialization
+-entity serialization DONE
 	-need to implement serialization support for an entity
 	-so you could sync entities when created
+-Create GUI systems

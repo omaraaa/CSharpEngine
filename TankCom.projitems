@@ -11,9 +11,11 @@
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)CS\Basic.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)CS\ComponentSystem.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)CS\GUI.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)CS\Lua.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)CS\Networking.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)CS\Physics.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)CS\Rendering.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)CS\Serializer.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)CS\Sprite.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)CS\Util\ComponentsContainer.cs" />

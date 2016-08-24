@@ -57,7 +57,7 @@ class Player
 		leg.IsSensor = true;
 		leg.OnCollision += collision;
 		leg.OnSeparation += seperation;
-
+		isControllable = true;
 	}
 	bool collision(Fixture a, Fixture b, Contact contact)
 	{

@@ -80,7 +80,7 @@ namespace TankComProject
 			graphics = new GraphicsDeviceManager(this);
 			Content.RootDirectory = "Content";
 			//TargetElapsedTime = new System.TimeSpan(0, 0, 0, 0, 33/2);
-			IsFixedTimeStep = false;
+			//IsFixedTimeStep = false;
 		}
 
 		/// <summary>
@@ -110,7 +110,7 @@ namespace TankComProject
 			// TODO: Add your initialization logic here
 			//graphics.PreferredBackBufferWidth = GraphicsDevice.DisplayMode.Width;
 			//graphics.PreferredBackBufferHeight = GraphicsDevice.DisplayMode.Height;
-			graphics.SynchronizeWithVerticalRetrace = false;
+			//graphics.SynchronizeWithVerticalRetrace = false;
 			//graphics.IsFullScreen = true;
 			graphics.ApplyChanges();
 
@@ -165,7 +165,7 @@ namespace TankComProject
 			
 
 			{
-				Image img = new Image(guiState, "cursor", new Vector2(0, 0), 0.1f);
+				Image img = new Image(guiState, "cursor", Vector2.Zero, new Vector2(9, 9) , 0.1f);
 				mousesys2.AddEntity(img.id);
 			}
 			/*
@@ -311,7 +311,7 @@ namespace TankComProject
 						if(type == 0)
 						{
 							//Clienteid = message.ReadInt32();
-							Image img2 = new Image(state, "player", new Vector2(100, 100));
+							Image img2 = new Image(state, "player", new Vector2(100, 100), Vector2.Zero);
 							var id = img2.id;
 							ddSys.AddEntity(id);
 							var textC = textureSys.getComponent(img2.textureIndex);
@@ -344,7 +344,7 @@ namespace TankComProject
 						else if (type == 2)
 						{
 							var id = message.ReadInt32();
-							if (id >= state.EntitiesCount())
+							if (id >= state.EntitiesCount() || id == Clienteid)
 								continue;
 							var x = message.ReadSingle();
 							var y = message.ReadSingle();
@@ -396,6 +396,13 @@ namespace TankComProject
 						{
 							Exit();
 						}
+						else if (type == 5)
+						{
+							var bufferSize = message.ReadInt32();
+							var input = new MemoryStream(message.ReadBytes(bufferSize));
+							var binaryReader = new BinaryReader(input);
+							state.DeserializeEntity(binaryReader);
+						}
 						break;
 
 					case NetIncomingMessageType.StatusChanged:
@@ -440,7 +447,7 @@ namespace TankComProject
 						int type = message.ReadInt32();
 						if (type == 0)
 						{
-							Image img2 = new Image(state, "player", new Vector2(100, 100));
+							Image img2 = new Image(state, "player", new Vector2(100, 100), Vector2.Zero);
 							var id = img2.id;
 							ddSys.AddEntity(id);
 							var textC = textureSys.getComponent(img2.textureIndex);
@@ -457,6 +464,7 @@ namespace TankComProject
 							var s = new MemoryStream();
 							BinaryWriter writer = new BinaryWriter(s);
 							state.Serialize(writer);
+							state.addedEntities = new Queue<int>();
 							writer.Flush();
 							s.Position = 0;
 							byte[] bytes = s.ToArray();
@@ -508,6 +516,35 @@ namespace TankComProject
 						else if (type == 4)
 						{
 							Exit();
+						}
+						else if (type == 5)
+						{
+							
+
+							var bufferSize = message.ReadInt32();
+							var input = new MemoryStream(message.ReadBytes(bufferSize));
+							var binaryReader = new BinaryReader(input);
+							var id = state.DeserializeEntity(binaryReader);
+							foreach (var connection in server.Connections)
+							{
+								if (connection != message.SenderConnection)
+								{
+									var msg = server.CreateMessage();
+									msg.Write(5);
+									var s = new MemoryStream();
+									BinaryWriter writer = new BinaryWriter(s);
+									state.SerializeEntity(id, writer);
+									writer.Flush();
+									s.Position = 0;
+									byte[] bytes = s.ToArray();
+									msg.Write(bytes.Length);
+									msg.Write(bytes);
+									//Clienteid = message.ReadInt32();
+									msg.Write(-1);
+									writer.Close();
+									server.SendToAll(msg, NetDeliveryMethod.ReliableOrdered);
+								}
+							}
 						}
 						break;
 
@@ -596,10 +633,30 @@ namespace TankComProject
 			}
 			
 			G.Update(gameTime);
-			if(server.Status == NetPeerStatus.Running && entitiesCount != state.EntitiesCount())
+			if(server.Status == NetPeerStatus.Running && state.addedEntities.Count > 0)
 			{
-				var msg = server.CreateMessage();
-				msg.Write(1);
+				
+				for (int i = 0; i < state.addedEntities.Count; ++i)
+				{
+					var msg = server.CreateMessage();
+					msg.Write(5);
+					var id = state.addedEntities.Dequeue();
+					var s = new MemoryStream();
+					BinaryWriter writer = new BinaryWriter(s);
+					state.SerializeEntity(id, writer);
+					writer.Flush();
+					s.Position = 0;
+					byte[] bytes = s.ToArray();
+					msg.Write(bytes.Length);
+					msg.Write(bytes);
+					//Clienteid = message.ReadInt32();
+					msg.Write(-1);
+					writer.Close();
+					server.SendToAll(msg, NetDeliveryMethod.ReliableOrdered);
+				}
+
+				/*
+				 msg.Write(1);
 				var s = new MemoryStream();
 				BinaryWriter writer = new BinaryWriter(s);
 				state.Serialize(writer);
@@ -612,6 +669,45 @@ namespace TankComProject
 				msg.Write(-1);
 				writer.Close();
 				server.SendToAll(msg, NetDeliveryMethod.ReliableOrdered);
+				 */
+			}
+
+			if (peer.Status == NetPeerStatus.Running && state.addedEntities.Count > 0)
+			{
+				var msg = peer.CreateMessage();
+				msg.Write(5);
+				for (int i = 0; i < state.addedEntities.Count; ++i)
+				{
+					var id = state.addedEntities.Dequeue();
+					var s = new MemoryStream();
+					BinaryWriter writer = new BinaryWriter(s);
+					state.SerializeEntity(id, writer);
+					writer.Flush();
+					s.Position = 0;
+					byte[] bytes = s.ToArray();
+					msg.Write(bytes.Length);
+					msg.Write(bytes);
+					//Clienteid = message.ReadInt32();
+					msg.Write(-1);
+					writer.Close();
+					peer.SendMessage(msg, NetDeliveryMethod.ReliableOrdered);
+				}
+
+				/*
+				 msg.Write(1);
+				var s = new MemoryStream();
+				BinaryWriter writer = new BinaryWriter(s);
+				state.Serialize(writer);
+				writer.Flush();
+				s.Position = 0;
+				byte[] bytes = s.ToArray();
+				msg.Write(bytes.Length);
+				msg.Write(bytes);
+				//Clienteid = message.ReadInt32();
+				msg.Write(-1);
+				writer.Close();
+				server.SendToAll(msg, NetDeliveryMethod.ReliableOrdered);
+				 */
 			}
 			entitiesCount = state.EntitiesCount();
 			acc += G.dt;

@@ -1,14 +1,19 @@
-﻿using Lidgren.Network;
+﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
+using Microsoft.Xna.Framework.Input.Touch;
+using Lidgren.Network;
 using CS;
 using CS.Components;
 using System;
 using System.IO;
+using Entities;
 
 namespace CS.Components
 {
-	enum ServerMessages
+	enum NetworkMessages : int
 	{
-		CONNECTED, INITIALIZE
+		CONNECTED, INITIALIZE, SYNC, EXIT
 	}
 
 	class NetworkServerSystem : BaseSystem, ISysUpdateable
@@ -27,7 +32,7 @@ namespace CS.Components
 			return new NetworkServerSystem(state);
 		}
 
-		public void Start(string appname, int port=0)
+		public void Start(string appname, int port = 0)
 		{
 			Config = new NetPeerConfiguration(appname)
 			{
@@ -39,19 +44,6 @@ namespace CS.Components
 
 		public void Update(Global G)
 		{
-			NetIncomingMessage message;
-			while((message = Server.ReadMessage()) != null)
-			{
-				switch(message.MessageType)
-				{
-					case NetIncomingMessageType.Data:
-						ManageData(message);
-						break;
-					case NetIncomingMessageType.StatusChanged:
-
-						break;
-				}
-			}
 		}
 
 		private void ManageData(NetIncomingMessage message)
@@ -96,19 +88,7 @@ namespace CS.Components
 
 		public void Update(Global G)
 		{
-			NetIncomingMessage message;
-			while ((message = Client.ReadMessage()) != null)
-			{
-				switch (message.MessageType)
-				{
-					case NetIncomingMessageType.Data:
-						ManageData(message);
-						break;
-					case NetIncomingMessageType.StatusChanged:
-
-						break;
-				}
-			}
+			
 		}
 
 		private void ManageData(NetIncomingMessage message)

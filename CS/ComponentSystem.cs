@@ -72,8 +72,10 @@ namespace CS
 		virtual public int AddEntity(int id)
 		{
 			var cindex = _state.getComponentIndex(id, systemIndex);
-			if (cindex != -1)
-				return cindex;
+			if (cindex != -1 && cindex < size)
+			{
+				entityIDs[cindex] = id;
+			}
 			if (freeIndexes.Length == 0)
 			{
 				size++;
@@ -244,12 +246,12 @@ namespace CS
 			T component = DeserailizeComponent(reader);
 			if (index >= size)
 			{
-				AddComponent(index, component);
+				AddComponent(id, component);
 			}
 			else
 			{
-				components[index] = component;
 				base.DeserializeEntity(id, index, reader);
+				components[index] = component;
 			}
 		}
 
@@ -271,7 +273,7 @@ namespace CS
 			get
 			{
 				return
-				Matrix.CreateTranslation(new Vector3(-position, 0))
+				Matrix.CreateTranslation(new Vector3(-position.ToPoint().ToVector2(), 0))
 				* Matrix.CreateScale(new Vector3(scale, 0))
 				* Matrix.CreateTranslation(new Vector3(rect.Width / 2f, rect.Height / 2f, 0))
 				;
@@ -282,7 +284,7 @@ namespace CS
 		public Vector2 position;
 		public Vector2 scale;
 		public Vector2 center;
-		public float lerpValue = 0.5f;
+		public float lerpValue = 0.005f;
 		private State _state;
 
 		public Camera(State state)
@@ -298,7 +300,7 @@ namespace CS
 
 		public void SetPosition(Vector2 pos)
 		{
-			position = pos;
+			position = Vector2.LerpPrecise(position, pos, _state.G.dt);
 		}
 
 		public void setScale(Vector2 scale)
@@ -313,6 +315,14 @@ namespace CS
 			v = v / scale - pos / scale;
 		}
 
+		public Vector2 toCameraScale(Vector2 v)
+		{
+			var scale = new Vector2(matrix.Scale.X, matrix.Scale.Y);
+			var pos = new Vector2(matrix.Translation.X, matrix.Translation.Y);
+			v = v / scale - pos / scale;
+			return v;
+		}
+
 		public void toCamera(ref Vector2 v)
 		{
 			var scale = new Vector2(matrix.Scale.X, matrix.Scale.Y);
@@ -320,6 +330,8 @@ namespace CS
 			v = v - pos;
 		}
 	}
+
+
 
 	class State
 	{
@@ -330,6 +342,7 @@ namespace CS
 		private int[][] entitiesIndexes;
 		private int[] removedEntities;
 		private Stack<int> toRemoveEntities;
+		public Queue<int> addedEntities;
 
 		public Global G;
 		public Camera camera;
@@ -343,6 +356,7 @@ namespace CS
 			entitiesIndexes = new int[0][];
 			removedEntities = new int[0];
 			toRemoveEntities = new Stack<int>();
+			addedEntities = new Queue<int>();
 			this.G = G;
 			if(G != null)
 				camera = new Camera(this);
@@ -424,6 +438,7 @@ namespace CS
 			{
 				entitiesIndexes[index][i] = -1;
 			}
+			addedEntities.Enqueue(index);
 			return index;
 		}
 
@@ -522,10 +537,12 @@ namespace CS
 			}
 		}
 
-		public void DeserializeEntity(BinaryReader reader)
+		public int DeserializeEntity(BinaryReader reader)
 		{
 			var id = reader.ReadInt32();
 			var length = reader.ReadInt32();
+			if (id >= entitiesIndexes.Length)
+				Array.Resize(ref entitiesIndexes, entitiesIndexes.Length + 1);
 
 			entitiesIndexes[id] = new int[length];
 
@@ -540,6 +557,8 @@ namespace CS
 					sys.DeserializeEntity(id, index, reader);
 				}
 			}
+
+			return id;
 		}
 
 		public void Serialize(BinaryWriter writer)

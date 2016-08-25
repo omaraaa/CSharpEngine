@@ -646,7 +646,7 @@ namespace CS.Components
 		}
 	}
 
-	delegate void TimerCallback(State state, int id);
+	delegate void CallBack(State state, int id);
 	class Timer
 	{
 		public float target;
@@ -654,7 +654,7 @@ namespace CS.Components
 		public bool repeat;
 		public bool active;
 		public string callbackName;
-		public TimerCallback callback;
+		public CallBack callback;
 
 		public Timer(float target, bool repeat, string callbackName)
 		{
@@ -671,7 +671,7 @@ namespace CS.Components
 
 	class TimerSystem : ComponentSystem<Timer[]>, ISysUpdateable
 	{
-		static public Dictionary<string, TimerCallback> callbacks = new Dictionary<string, TimerCallback>();
+		static public Dictionary<string, CallBack> callbacks = new Dictionary<string, CallBack>();
 
 		public TimerSystem(State state) : base(state, "TimerSystem")
 		{
@@ -778,7 +778,44 @@ namespace CS.Components
 		public override void DeserializeSystem(BinaryReader reader)
 		{
 		}
-	}		
+	}
+
+	class RegistrySystem<T> : BaseSystem
+	{
+		Dictionary<string, T> registry;
+		public RegistrySystem(State state, string name) : base(state, name)
+		{
+			registry = new Dictionary<string, T>();
+		}
+
+		public override BaseSystem DeserializeConstructor(State state, string name)
+		{
+			return new RegistrySystem<T>(state, name);
+		}
+
+		public override void DeserializeSystem(BinaryReader reader)
+		{
+		}
+
+		public override void SerializeSystem(BinaryWriter writer)
+		{
+		}
+
+		public void Register(string name, T obj)
+		{
+			registry[name] = obj;
+		}
+
+		public T Get(string name)
+		{
+			return registry[name];
+		}
+
+		public bool Has(string name)
+		{
+			return registry.ContainsKey(name);
+		}
+	}
 }
 
 

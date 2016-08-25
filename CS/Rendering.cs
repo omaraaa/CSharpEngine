@@ -71,6 +71,8 @@ namespace CS.Components
 		{
 			scale.X = ((float)w) / textureRect.Width;
 			scale.Y = ((float)h) / textureRect.Height;
+			textureRect.Width = w;
+			textureRect.Height = h;
 		}
 
 		public int Width
@@ -131,7 +133,10 @@ namespace CS.Components
 
 		public void Render(Global G)
 		{
-			_batch.Begin(sortMode: SpriteSortMode.BackToFront, samplerState: SamplerState.PointWrap, transformMatrix: _state.camera.matrix);
+			RasterizerState raster = new RasterizerState();
+			raster.ScissorTestEnable = true;
+
+			_batch.Begin(sortMode: SpriteSortMode.BackToFront, samplerState: SamplerState.PointWrap, rasterizerState: raster, transformMatrix: _state.camera.matrix);
 			for (int i = 0; i < size; ++i)
 			{
 				if (entityIDs[i] == -1)
@@ -171,8 +176,8 @@ namespace CS.Components
 			if (transform.ContainsEntity(id, ref transfromIndex))
 			{
 				var transformC = transform.getComponent(transfromIndex);
-				rect.X = (int)(transformC.position.X - rect.Width / 2f + 8);
-				rect.Y = (int)(transformC.position.Y - rect.Height / 2f + 8);
+				rect.X = (int)(transformC.position.X - rect.Width / 2f);
+				rect.Y = (int)(transformC.position.Y - rect.Height / 2f);
 			}
 
 			return rect;
@@ -292,6 +297,12 @@ namespace CS.Components
 		public SpriteFont Font { get; private set; }
 		public string FontName { get; private set; }
 		public Color Color { get; set; }
+		public float Layer { get; set; }
+		
+		public Text()
+		{
+			Layer = 0.9f;
+		}
 
 		public void SetFont(FontSystem fontSys, string name)
 		{
@@ -328,6 +339,7 @@ namespace CS.Components
 
 		public void Render(Global G)
 		{
+			Batch.Begin();
 			for(int i = 0; i < size; ++i)
 			{
 				if (entityIDs[i] == -1)
@@ -340,10 +352,11 @@ namespace CS.Components
 					var trans = tranSys.getComponent(transIndex);
 					textC.Position = trans.position;
 				}
-				Batch.Begin();
-				Batch.DrawString(textC.Font, textC.String, textC.Position, textC.Color);
-				Batch.End();
+
+				Vector2 textMiddlePoint = textC.Font.MeasureString(textC.String) / 2;
+				Batch.DrawString(textC.Font, textC.String, textC.Position - textMiddlePoint, textC.Color, 0, Vector2.Zero, 1, SpriteEffects.None, textC.Layer);
 			}
+			Batch.End();
 		}
 
 		public override void SerializeSystem(BinaryWriter writer)

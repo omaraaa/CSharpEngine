@@ -212,6 +212,13 @@ namespace CS
 			return components[index];
 		}
 
+		public T getComponentByID(int id)
+		{
+			var index = _state.getComponentIndex(id, systemIndex);
+
+			return components[index];
+		}
+
 		public override void Serialize(BinaryWriter writer)
 		{
 			base.Serialize(writer);
@@ -656,6 +663,8 @@ namespace CS
 			mouseState = Mouse.GetState();
 			touchCollection = TouchPanel.GetState();
 			keyboardState = Keyboard.GetState();
+
+			base.Update();
 
 			foreach (State s in activeStates)
 			{

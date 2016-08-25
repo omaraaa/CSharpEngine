@@ -117,8 +117,11 @@ namespace TankComProject
 			fpsGraph = new DebugGraph(GraphicsDevice, new Rectangle(0, 50, 200, 25), 100, 60);
 
 			G = new Global(this);
+			var inputSys = new InputSystem(G);
 			var GLuaSys = new GlobalLuaSystem(G);
 			var fontSys = new FontSystem(G);
+			var callbackRegistry = new RegistrySystem<CallBack>(G, "CallBackRegistry");
+			callbackRegistry.Register("KillEntity", TimerSystem.KillEntity);
 
 			state = new State(G);
 			State guiState = new State(G);
@@ -133,6 +136,7 @@ namespace TankComProject
 			transSys = new TransformSystem(state);
 			
 			physics = new PhysicsSystem(state);
+			var textSys = new TextRenderingSystem(state);
 			textureSys = new TextureSystem(state);
 			cameraFollow = new CameraFollowSystem(state);
 			sprSys = new SpriteSystem(state);
@@ -140,17 +144,19 @@ namespace TankComProject
 			ddSys = new DragAndDropSystem(state);
 			playerSys = new PlayerSystem(state);
 			TimerSystem timerSys = new TimerSystem(state);
+			GUISystem guiSys = new GUISystem(state);
 			var gridfunc = GLuaSys.luaScript.Globals.Get("CreateGridSystem");
 			GLuaSys.luaScript.Call(gridfunc, state);
 
 			TransformSystem transSys2 = new TransformSystem(guiState);
 			//PhysicsSystem physics2 = new PhysicsSystem(guiState);
-			var textSys = new TextRenderingSystem(guiState);
+			var textSys2 = new TextRenderingSystem(guiState);
 			TextureSystem textureSys2 = new TextureSystem(guiState);
 			//CameraFollowSystem cameraFollow2 = new CameraFollowSystem(guiState);
 			SpriteSystem sprSys2 = new SpriteSystem(guiState);
 			MouseFollowSystem mousesys2 = new MouseFollowSystem(guiState);
 			DragAndDropSystem ddSys2 = new DragAndDropSystem(guiState);
+			GUISystem guiSys2 = new GUISystem(guiState);
 			//PlayerSystem playerSys2 = new PlayerSystem(guiState);
 			
 
@@ -160,6 +166,7 @@ namespace TankComProject
 			//sprSys.CreateGridFrames("player", 30, 27);
 			{
 				sprSys.loadJSON("Content/player.json", "player");
+				sprSys.loadJSON("Content/button.json", "button");
 			}
 
 			//state.RegisterSystem(transSys);
@@ -175,7 +182,10 @@ namespace TankComProject
 				textObj.SetFont(fontSys, "font");
 				textObj.String = "TESTING";
 
-				textSys.AddComponent(img.id, textObj);
+				//textSys.AddComponent(img.id, textObj);
+
+
+				var id = GUISystem.CreateButton(state, textObj, "button", new Rectangle(400, 400, 600, 200), "KillEntity", 0.5f);
 			}
 			/*
 			var thickness = 32;
@@ -463,7 +473,7 @@ namespace TankComProject
 							var sprite = new Sprite("player");
 							sprSys.AddComponent(id, sprite);
 							sprSys.Play("idle", id, 1, true);
-							textC.setScale(2, 2);
+							textC.setRect(100, 100);
 							var player = new Player(id, physics, textC.textureRect, false);
 							playerSys.AddComponent(id, player);
 

@@ -122,6 +122,7 @@ namespace TankComProject
 			var fontSys = new FontSystem(G);
 			var callbackRegistry = new RegistrySystem<CallBack>(G, "CallBackRegistry");
 			callbackRegistry.Register("KillEntity", TimerSystem.KillEntity);
+			callbackRegistry.Register("Start", TimerSystem.KillEntity);
 
 			state = new State(G);
 			State guiState = new State(G);
@@ -171,21 +172,22 @@ namespace TankComProject
 
 			//state.RegisterSystem(transSys);
 			//state.RegisterSystem(textureSys);
-			
+
 
 			{
-				Image img = new Image(guiState, "cursor", Vector2.Zero, new Vector2(9, 9) , 0.1f);
+				Image img = new Image(guiState, "cursor", Vector2.Zero, new Vector2(9, 9), 0.1f);
 				mousesys2.AddEntity(img.id);
-
+			}
+			{ 
 				Text textObj = new Text();
 				textObj.Color = Color.White;
 				textObj.SetFont(fontSys, "font");
-				textObj.String = "TESTING";
-
-				//textSys.AddComponent(img.id, textObj);
-
-
+				textObj.String = "Start";
 				var id = GUISystem.CreateButton(state, textObj, "button", new Rectangle(400, 400, 600, 200), "KillEntity", 0.5f);
+				GUISystem.CreateButton(state, textObj, "button", new Rectangle(100, 200, 600, 200), "KillEntity", 0.5f);
+				GUISystem.CreateButton(state, textObj, "button", new Rectangle(0, 0, 600, 200), "KillEntity", 0.5f);
+				GUISystem.CreateButton(state, textObj, "button", new Rectangle(600, 200, 600, 200), "KillEntity", 0.5f);
+				GUISystem.CreateButton(state, textObj, "button", new Rectangle(400, 200, 600, 200), "KillEntity", 0.5f);
 			}
 			/*
 			var thickness = 32;
@@ -255,7 +257,7 @@ namespace TankComProject
 				var p = PhysicsObject.CreateBody(physics, thickness, graphics.PreferredBackBufferHeight, (int)FarseerPhysics.Dynamics.BodyType.Static);
 				physics.AddComponent(e, p);
 			}*/
-			
+
 			G.ActivateState(state);
 			G.ActivateState(guiState);
 

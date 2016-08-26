@@ -11,7 +11,7 @@ namespace CS.Components
 	class InputSystem : BaseSystem, ISysUpdateable
 	{
 		MouseState mouseState;
-		public bool IsMouseCaptured { get; private set; }
+		public bool IsMouseCaptured { get; set; }
 		KeyboardState keyboardState;
 
 		public InputSystem(State state) : base(state, "InputSystem")
@@ -26,12 +26,10 @@ namespace CS.Components
 
 		public override void DeserializeSystem(BinaryReader reader)
 		{
-			throw new NotImplementedException();
 		}
 
 		public override void SerializeSystem(BinaryWriter writer)
 		{
-			throw new NotImplementedException();
 		}
 
 		public void Update(Global G)
@@ -43,7 +41,6 @@ namespace CS.Components
 
 		public MouseState getMouseState()
 		{
-			IsMouseCaptured = true;
 			return mouseState;
 		}
 	}
@@ -143,7 +140,7 @@ namespace CS.Components
 					{
 						spriteSys.Play("mouseOver", id, 1, false);
 					}
-
+					inputSys.IsMouseCaptured = true;
 				} else
 				{
 					spriteSys.Play("active", id, 1, false);
@@ -236,11 +233,11 @@ namespace CS.Components
 			textureSys.AddComponent(e, texture);
 
 			var sprite = new Sprite(textureName);
-
-			texture.setRect(rect.Width, rect.Height);
+			spriteSys.Play("active", e, 1, true);
 
 			spriteSys.AddComponent(e, sprite);
 
+			texture.setRect(rect.Width, rect.Height);
 			text.Layer = layer;
 			textSys.AddComponent(e, text);
 

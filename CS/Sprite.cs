@@ -153,6 +153,33 @@ namespace CS.Components
 			}
 		}
 
+		public void SetFrame(int eID, int frameIndex)
+		{
+			var index = _state.getComponentIndex(eID, systemIndex);
+			if (index == -1)
+				return;
+
+			components[index].currentAnimation.name = "";
+			components[index].currentAnimation.fps = 1;
+			components[index].currentAnimation.repeat = true;
+			components[index].currentAnimation.index = 0;
+			components[index].currentAnimation.frames = new int[] { frameIndex };
+			components[index].currentAnimation.active = true;
+			components[index].currentAnimation.frameLength = 1;
+
+			int textureIndex = -1;
+			if (textureSys.ContainsEntity(eID, ref textureIndex))
+			{
+				var tex = textureSys.getComponent(textureIndex);
+				var texName = components[index].textureName;
+
+				tex.srcRect = frames[texName][components[index].currentAnimation.frames[0]];
+				tex.resetRect();
+				tex.effect = components[index].flipH ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
+			}
+
+		}
+
 		public void AddAnimation(Animation animation)
 		{
 			animations[animation.name] = animation;

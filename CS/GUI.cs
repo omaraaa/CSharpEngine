@@ -13,10 +13,16 @@ namespace CS.Components
 		MouseState mouseState;
 		public bool IsMouseCaptured { get; set; }
 		KeyboardState keyboardState;
+		private List<Keys> lastKeyboardState;
+		private List<Keys> pressedKeys;
+		private List<Keys> releasedKeys;
 
 		public InputSystem(State state) : base(state, "InputSystem")
 		{
 			IsMouseCaptured = false;
+			lastKeyboardState = new List<Keys>();
+			pressedKeys = new List<Keys>();
+			releasedKeys = new List<Keys>();
 		}
 
 		public override BaseSystem DeserializeConstructor(State state, string name)
@@ -34,26 +40,54 @@ namespace CS.Components
 
 		public void Update(Global G)
 		{
+			pressedKeys.Clear();
+			releasedKeys.Clear();
 			IsMouseCaptured = false;
 			mouseState = G.mouseState;
 			keyboardState = G.keyboardState;
+			var keys = keyboardState.GetPressedKeys();
+
+			foreach(Keys key in keys)
+			{
+				if (!lastKeyboardState.Contains(key))
+				{
+					pressedKeys.Add(key);
+				}
+			}
+
+			lastKeyboardState =  new List<Keys>(keys);
 		}
 
 		public MouseState getMouseState()
 		{
 			return mouseState;
 		}
+
+		public bool GetJustPressed(out Keys[] keys)
+		{
+			keys = pressedKeys.ToArray();
+			
+			return pressedKeys.Count != 0;
+		}
+
+		public bool JustPressed(Keys key)
+		{
+			return pressedKeys.Contains(key);
+		}
 	}
 
-	class MessageSystem : BaseSystem
+	class MessageSystem : BaseSystem, ISysUpdateable
 	{
-		public MessageSystem(State state, string name) : base(state, name)
+		Dictionary<string, string> messages;
+
+		public MessageSystem(State state) : base(state, "MessageSystem")
 		{
+			messages = new Dictionary<string, string>();
 		}
 
 		public override BaseSystem DeserializeConstructor(State state, string name)
 		{
-			throw new NotImplementedException();
+			return new MessageSystem(state);
 		}
 
 		public override void DeserializeSystem(BinaryReader reader)
@@ -64,6 +98,26 @@ namespace CS.Components
 		public override void SerializeSystem(BinaryWriter writer)
 		{
 			throw new NotImplementedException();
+		}
+
+		public void Update(Global G)
+		{
+			messages.Clear();
+		}
+
+		public void Set(string key, string value)
+		{
+			messages[key] = value;
+		}
+
+		public string Get(string key)
+		{
+			return messages[key];
+		}
+
+		public bool Has(string key)
+		{
+			return messages.ContainsKey(key);
 		}
 	}
 
@@ -96,12 +150,19 @@ namespace CS.Components
 		Rectangle rect;
 		bool pressed;
 		bool canPress;
+		public Text text;
 
-		public GUIButton(Rectangle rect) : base()
+		public GUIButton(State state, Rectangle rect) : base()
 		{
 			this.rect = rect;
 			pressed = false;
 			canPress = false;
+			state.G.game.Window.TextInput += UpdateTextField;
+		}
+
+		public void UpdateTextField(object obj, TextInputEventArgs args)
+		{
+			text.String += args.Character;
 		}
 
 		public override void Update(ref State state, int id)
@@ -109,12 +170,20 @@ namespace CS.Components
 			var spriteSys = state.getSystem<SpriteSystem>();
 			var inputSys = state.G.getSystem<InputSystem>();
 			var textureSys = state.getSystem<TextureSystem>();
+			var textSys = state.getSystem<TextRenderingSystem>();
 
 			if (inputSys.IsMouseCaptured)
 				return;
 
 			var spriteIndex = state.getComponentIndex(id, spriteSys.systemIndex);
 			var sprite = spriteSys.getComponent(spriteIndex);
+
+			if(inputSys.JustPressed(Keys.Back) && text.String.Length > 0)
+			{
+				text.String = text.String.Remove(text.String.Length - 1, 1);
+			}
+
+			textSys.SetComponent(id, text);
 
 			var mouseState = inputSys.getMouseState();
 			if (IsActive)
@@ -157,11 +226,28 @@ namespace CS.Components
 		}
 	}
 
+	delegate bool Pattern(char c);
 	class GUITextBox : GUIElement
 	{
 		public Color Color1 { set; get; }
 		public Color Color2 { set; get; }
 		public Color TextColor { set; get; }
+
+		private string str;
+
+		private Pattern patternMatcher = null;
+
+		public override void Update(ref State state, int id)
+		{
+
+
+
+			if(patternMatcher != null)
+			{
+
+			}
+			base.Update(ref state, id);
+		}
 	}
 
 	class GUIPanel : GUIElement
@@ -241,9 +327,10 @@ namespace CS.Components
 			text.Layer = layer;
 			textSys.AddComponent(e, text);
 
-			var buttonElement = new GUIButton(rect);
+			var buttonElement = new GUIButton(state, rect);
 			buttonElement.IsActive = true;
 			buttonElement.SetCallback(registry, callbackName);
+			buttonElement.text = text;
 			guiSys.AddComponent(e, buttonElement);
 
 			return e;

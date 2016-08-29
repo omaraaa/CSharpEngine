@@ -21,8 +21,10 @@
     <Compile Include="$(MSBuildThisFileDirectory)CS\Util\ComponentsContainer.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)CS\Util\DebugGraph.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)CS\Util\Serialization.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)CS\Util\TiledLoader.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Game1.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Game\Player.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)LD30\LD36Game.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="$(MSBuildThisFileDirectory)TODO.txt" />

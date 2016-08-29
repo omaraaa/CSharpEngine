@@ -126,6 +126,21 @@ namespace CS.Components
 			//luaState.LoadFile(Content.RootDirectory + "/systems.lua");
 		}
 
+		public DynValue loadScript(string name)
+		{
+			DynValue script;
+			var stream = TitleContainer.OpenStream("Content/" + name);
+			using (var reader = new StreamReader(stream, Encoding.UTF8))
+			{
+				string value = reader.ReadToEnd();
+				// Do something with the value
+				script = luaScript.DoString(value);
+			}
+			stream.Close();
+
+			return script;
+		}
+
 		public override void SerializeSystem(BinaryWriter writer)
 		{
 		}

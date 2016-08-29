@@ -207,6 +207,13 @@ namespace CS
 			return index;
 		}
 
+		virtual public void SetComponent(int id, T component)
+		{
+			var index = _state.getComponentIndex(id, systemIndex);
+			if (index < size)
+				components[index] = component;
+		}
+
 		public T getComponent(int index)
 		{
 			return components[index];
@@ -291,7 +298,7 @@ namespace CS
 		public Vector2 position;
 		public Vector2 scale;
 		public Vector2 center;
-		public float lerpValue = 0.005f;
+		public float lerpValue = 0.1f;
 		private State _state;
 
 		public Camera(State state)
@@ -307,7 +314,7 @@ namespace CS
 
 		public void SetPosition(Vector2 pos)
 		{
-			position = Vector2.LerpPrecise(position, pos, _state.G.dt);
+			position = Vector2.SmoothStep(position, pos, lerpValue);
 		}
 
 		public void setScale(Vector2 scale)
@@ -672,12 +679,14 @@ namespace CS
 			}
 		}
 
-		public void Render(SpriteBatch batch)
+		public new void Render(SpriteBatch batch)
 		{
+
 			foreach (State s in activeStates)
 			{
 				s.Render(batch);
 			}
+			base.Render(batch);
 		}
 
 		public void ActivateState(State s)
@@ -686,6 +695,16 @@ namespace CS
 
 			activeStates[activeStates.Length-1] = s;
 			s.index = activeStates.Length - 1;
+		}
+
+		public void deactivateState(int index)
+		{
+			activeStates[index] = null;
+		}
+
+		public void setState(int index, State state)
+		{
+			activeStates[index] = state;
 		}
 
 		private void loadTexture(String name)

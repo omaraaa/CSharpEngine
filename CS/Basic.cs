@@ -653,16 +653,21 @@ namespace CS.Components
 		public float count;
 		public bool repeat;
 		public bool active;
-		public string callbackName;
-		public CallBack callback;
+		public List<string> callbackNames;
+		public List<CallBack> callbacks;
 
-		public Timer(float target, bool repeat, string callbackName)
+		public Timer(float target, bool repeat, params string[] callbackNames)
 		{
 			this.target = target;
 			count = 0;
 			this.repeat = repeat;
-			this.callbackName = callbackName;
-			this.callback = TimerSystem.callbacks[callbackName];
+			this.callbackNames = new List<string>();
+			callbacks = new List<CallBack>();
+			foreach (var callbackName in callbackNames)
+			{
+				this.callbackNames.Add(callbackName);
+				this.callbacks.Add(TimerSystem.callbacks[callbackName]);
+			}
 			active = true;
 		}
 	}
@@ -701,7 +706,8 @@ namespace CS.Components
 					t.count += G.dt;
 					if(t.count >= t.target)
 					{
-						t.callback(_state, entityIDs[i]);
+						foreach(var callback in t.callbacks)
+							callback(_state, entityIDs[i]);
 						if(!t.repeat)
 						{
 							t.active = false;
@@ -744,7 +750,9 @@ namespace CS.Components
 			foreach(Timer t in component)
 			{
 				writer.Write(t.active);
-				writer.Write(t.callbackName);
+				writer.Write(t.callbackNames.Count);
+				foreach(var name in t.callbackNames)
+				writer.Write(name);
 				writer.Write(t.count);
 				writer.Write(t.repeat);
 				writer.Write(t.target);
@@ -758,12 +766,18 @@ namespace CS.Components
 			for(int i = 0; i < length; ++i)
 			{
 				var active = reader.ReadBoolean();
-				var callbackString = reader.ReadString();
+				var callbackNamescount = reader.ReadInt32();
+				List<String> callbackNames = new List<string>();
+				for (int j = 0; j < callbackNamescount; ++j)
+				{
+					var callbackString = reader.ReadString();
+					callbackNames.Add(callbackString);
+				}
 				var count = reader.ReadSingle();
 				var repeat = reader.ReadBoolean();
 				var target = reader.ReadSingle();
 
-				timers[i] = new Timer(target, repeat, callbackString);
+				timers[i] = new Timer(target, repeat, callbackNames.ToArray());
 				timers[i].active = active;
 				timers[i].count = count;
 			}
@@ -816,6 +830,49 @@ namespace CS.Components
 			return registry.ContainsKey(name);
 		}
 	}
+
+	class GridSystem : BaseSystem, ISysUpdateable
+	{
+		int[,] grid;
+		int width;
+		int height;
+		int tilewidth;
+		int tileheight;
+
+		public GridSystem(State state, string name) : base(state, name)
+		{
+		}
+
+		public override BaseSystem DeserializeConstructor(State state, string name)
+		{
+			throw new NotImplementedException();
+		}
+
+		public override void DeserializeSystem(BinaryReader reader)
+		{
+			throw new NotImplementedException();
+		}
+
+		public override void SerializeSystem(BinaryWriter writer)
+		{
+			throw new NotImplementedException();
+		}
+
+		public void Update(Global G)
+		{
+			throw new NotImplementedException();
+		}
+
+		public void SetGrid(int w, int h, int tw, int th)
+		{
+			width = w;
+			height = h;
+			tilewidth = tw;
+			tileheight = th;
+
+			grid = new int[w,h];
+		}
+	}
 }
 
 
@@ -828,7 +885,7 @@ namespace Entities
 		public int textureIndex;
 		uint transformIndex;
 
-		public Image(State state, String image, Vector2 position, Vector2 offset, float layer = 0.9f)
+		public Image(State state, String image, Vector2 position, Vector2 offset, float layer = 0.9f, bool topright = false)
 		{
 			var transformSys = state.getSystem<TransformSystem>();
 			var textureSys = state.getSystem<TextureSystem>();
@@ -841,6 +898,12 @@ namespace Entities
 
 			Texture2 texture = new Texture2(state.G, image, layer);
 			texture.offset = offset;
+
+			if(topright)
+			{
+				texture.offset -= new Vector2(texture.textureRect.Width / 2, texture.textureRect.Height / 2);
+			}
+
 			textureIndex = textureSys.AddComponent(id, texture);
 		}
 	}

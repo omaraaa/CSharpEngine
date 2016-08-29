@@ -20,6 +20,68 @@ class Player
 	public int isTouching = 0;
 	public Fixture side;
 	public bool isControllable;
+	public int id;
+	public Vector2 spawnPos;
+	State state;
+	public int jumps = 0;
+	public int maxJumps = 1;
+	public bool infinite = false;
+
+	public Player(State state, Vector2 pos, float renderlayer, bool control = true)
+	{
+		var transSys = state.getSystem<TransformSystem>();
+		var physics = state.getSystem<PhysicsSystem>();
+		var textureSys = state.getSystem<TextureSystem>();
+		var spriteSys = state.getSystem<SpriteSystem>();
+		var playerSys = state.getSystem<PlayerSystem>();
+		var cameraFollow = state.getSystem<CameraFollowSystem>();
+
+		spawnPos = pos;
+		this.state = state;
+
+		var id = state.CreateEntity();
+
+		Transform trans = new Transform();
+		trans.position = pos;
+		transSys.AddComponent(id, trans);
+
+		Texture2 texture = new Texture2(state.G, "player", renderlayer);
+		textureSys.AddComponent(id, texture);
+
+		Sprite spr = new Sprite("player");
+		spriteSys.AddComponent(id, spr);
+		spriteSys.Play("idle", id, 16, true);
+
+		Rectangle bounds = texture.textureRect;
+
+		this.body = new Body(physics.world);
+		this.body.FixedRotation = true;
+		this.body.SleepingAllowed = false;
+		this.body.IsStatic = false;
+		this.body.Friction = 0f;
+		this.body.Restitution = 0;
+		physics.AddComponent(id, body);
+
+		var c = FixtureFactory.AttachCircle(ConvertUnits.ToSimUnits(bounds.Width / 3f),
+			1f, body, ConvertUnits.ToSimUnits(new Vector2(0, bounds.Height / 2f - bounds.Width / 3f)));
+		side = FixtureFactory.AttachRectangle(ConvertUnits.ToSimUnits(((bounds.Width / 3f)*2)), ConvertUnits.ToSimUnits(bounds.Height / 2), 1f,
+			ConvertUnits.ToSimUnits(new Vector2(0, -(bounds.Height / 2f) / 2f + 14)), body);
+		side.Restitution = 0;
+		side.Friction = 0f;
+
+
+		leg = FixtureFactory.AttachRectangle(ConvertUnits.ToSimUnits(bounds.Width / 2f), ConvertUnits.ToSimUnits(1), 0.001f, new Vector2(0, ConvertUnits.ToSimUnits(bounds.Height / 2f)), body);
+		leg.IsSensor = true;
+		leg.OnCollision += collision;
+		leg.OnSeparation += seperation;
+
+		isControllable = control;
+		this.id = id;
+
+		playerSys.AddComponent(id, this);
+		cameraFollow.SetEntity(id);
+		body.UserData = this;
+	}
 
 	public Player(int id, PhysicsSystem physics, Rectangle bounds, bool control = true)
 	{
@@ -59,14 +121,33 @@ class Player
 		leg.OnSeparation += seperation;
 		isControllable = true;
 	}
+
+	public void setPos(Vector2 pos)
+	{
+		var transSys = state.getSystem<TransformSystem>();
+
+		var t = transSys.getComponentByID(id);
+		t.position = pos;
+
+		body.Position = FarseerPhysics.ConvertUnits.ToSimUnits(pos);
+
+
+	}
 	bool collision(Fixture a, Fixture b, Contact contact)
 	{
-		isTouching++;
+		if (!b.IsSensor)
+		{
+			if(isTouching == 0)
+			{
+			}
+			isTouching++;
+		}
 		return true;
 	}
 	void seperation(Fixture a, Fixture b)
 	{
-		isTouching--;
+		if(!b.IsSensor)
+			isTouching--;
 	}
 }
 
@@ -96,8 +177,8 @@ class PlayerSystem : ComponentSystem<Player>, ISysUpdateable
 			var keyState = G.keyboardState;
 			var vel = player.body.LinearVelocity;
 			bool moving = false;
-			var speed = ConvertUnits.ToSimUnits(2030);
-			var maxVel = ConvertUnits.ToSimUnits(130);
+			var speed = ConvertUnits.ToSimUnits(1030);
+			var maxVel = ConvertUnits.ToSimUnits(10);
 			var spriteIndex = _state.getComponentIndex(entityIDs[i], spriteSys.systemIndex);
 			if (player.isControllable)
 			{
@@ -122,39 +203,56 @@ class PlayerSystem : ComponentSystem<Player>, ISysUpdateable
 
 					moving = true;
 				}
-
+				if(player.isTouching > 0)
+				{
+					player.jumps = 0;
+				}
 
 				if (keyState.IsKeyDown(Keys.Space) && player.isTouching > 0)
 				{
-					vel.Y = -ConvertUnits.ToSimUnits(500);
+					vel.Y = -ConvertUnits.ToSimUnits(420);
 					moving = true;
+					player.jumps++;
+				}
+
+				if (keyState.IsKeyDown(Keys.Space) && vel.Y > 1f && (player.jumps < player.maxJumps || player.infinite))
+				{
+					vel.Y = -ConvertUnits.ToSimUnits(420);
+					moving = true;
+					player.jumps++;
 
 				}
 			}
 			if (spriteIndex != -1)
 			{
 				var spr = spriteSys.getComponent(spriteIndex);
-				if (vel.X > ConvertUnits.ToSimUnits( 20f))
+				if (player.isTouching == 0)
 				{
-					spriteSys.Play("move", entityIDs[i], 8, true);
-					spr.flipH = false;
-				} else if(vel.X < -ConvertUnits.ToSimUnits(20f))
-				{
-					spriteSys.Play("move", entityIDs[i], 8, true);
-					spr.flipH = true;
+					if (vel.Y < 0f)
+						spriteSys.Play("jumping", entityIDs[i], 30, false);
+					if (vel.Y > 1f)
+						spriteSys.Play("falling", entityIDs[i], 30, false);
 				}
 				else
 				{
-					spriteSys.Play("idle", entityIDs[i], 1, true);
+					if (vel.X > ConvertUnits.ToSimUnits(20f))
+					{
+						spriteSys.Play("move", entityIDs[i], 16, true);
+						spr.flipH = false;
+					}
+					else if (vel.X < -ConvertUnits.ToSimUnits(20f))
+					{
+						spriteSys.Play("move", entityIDs[i], 16, true);
+						spr.flipH = true;
+					}
+					else
+					{
+						//spriteSys.Play("jumping", entityIDs[i], 30, false);
+						spriteSys.Play("idle", entityIDs[i], 8, true);
+					}
 				}
 
-				if(player.isTouching == 0)
-				{
-					if(vel.Y < -1f)
-						spriteSys.Play("jumping", entityIDs[i], 1, true);
-					if (vel.Y > 1f)
-						spriteSys.Play("falling", entityIDs[i], 1, true);
-				}
+				
 			}
 
 			if (Math.Abs(vel.X) > maxVel)

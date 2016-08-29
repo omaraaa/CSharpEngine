@@ -117,6 +117,7 @@ namespace TankComProject
 			fpsGraph = new DebugGraph(GraphicsDevice, new Rectangle(0, 50, 200, 25), 100, 60);
 
 			G = new Global(this);
+			var msgSys = new MessageSystem(G);
 			var inputSys = new InputSystem(G);
 			var GLuaSys = new GlobalLuaSystem(G);
 			var fontSys = new FontSystem(G);
@@ -183,6 +184,7 @@ namespace TankComProject
 				textObj.Color = Color.White;
 				textObj.SetFont(fontSys, "font");
 				textObj.String = "Start";
+				textObj.Alignment = Align.CENTER;
 				var id = GUISystem.CreateButton(state, textObj, "button", new Rectangle(400, 400, 600, 200), "KillEntity", 0.5f);
 				GUISystem.CreateButton(state, textObj, "button", new Rectangle(100, 200, 600, 200), "KillEntity", 0.5f);
 				GUISystem.CreateButton(state, textObj, "button", new Rectangle(0, 0, 600, 200), "KillEntity", 0.5f);

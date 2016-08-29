@@ -133,10 +133,8 @@ namespace CS.Components
 
 		public void Render(Global G)
 		{
-			RasterizerState raster = new RasterizerState();
-			raster.ScissorTestEnable = true;
 
-			_batch.Begin(sortMode: SpriteSortMode.BackToFront, samplerState: SamplerState.PointWrap, rasterizerState: raster, transformMatrix: _state.camera.matrix);
+			_batch.Begin(sortMode: SpriteSortMode.BackToFront, samplerState: SamplerState.PointWrap, transformMatrix: _state.camera.matrix);
 			for (int i = 0; i < size; ++i)
 			{
 				if (entityIDs[i] == -1)
@@ -289,19 +287,33 @@ namespace CS.Components
 
 	}
 
-	class Text
+	enum Align
+	{
+		LEFT, CENTER, RIGHT
+	}
+
+	struct Text
 	{
 		public String String { get; set; }
-		public Rectangle Bounds { get; set; }
+		//public Rectangle Bounds { get; set; }
 		public Vector2 Position { get; set; }
 		public SpriteFont Font { get; private set; }
 		public string FontName { get; private set; }
 		public Color Color { get; set; }
 		public float Layer { get; set; }
+		public Align Alignment { get; set; }
 		
-		public Text()
+		public Text(string text, Vector2 pos, FontSystem fsys, string fontName)
 		{
+			String = text;
+			Position = pos;
+			Font = null;
+			FontName = "";
+			Color = Color.White;
 			Layer = 0.9f;
+			Alignment = Align.CENTER;
+
+			SetFont(fsys, fontName);
 		}
 
 		public void SetFont(FontSystem fontSys, string name)
@@ -352,8 +364,18 @@ namespace CS.Components
 					var trans = tranSys.getComponent(transIndex);
 					textC.Position = trans.position;
 				}
-
-				Vector2 textMiddlePoint = textC.Font.MeasureString(textC.String) / 2;
+				Vector2 textMiddlePoint = Vector2.Zero;
+				switch(textC.Alignment)
+				{
+					case Align.CENTER:
+						textMiddlePoint = textC.Font.MeasureString(textC.String) / 2;
+						break;
+					case Align.RIGHT:
+						textMiddlePoint = textC.Font.MeasureString(textC.String);
+						break;
+					case Align.LEFT:
+						break;
+				}
 				Batch.DrawString(textC.Font, textC.String, textC.Position - textMiddlePoint, textC.Color, 0, Vector2.Zero, 1, SpriteEffects.None, textC.Layer);
 			}
 			Batch.End();

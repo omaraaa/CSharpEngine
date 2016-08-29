@@ -8,7 +8,7 @@ using Microsoft.Xna.Framework.Input.Touch;
 using Microsoft.Xna.Framework.Graphics;
 
 using CS;
-using CS.Util;
+using Util;
 
 using FarseerPhysics.Dynamics;
 using FarseerPhysics.Collision;
@@ -17,7 +17,9 @@ using FarseerPhysics.Common;
 using FarseerPhysics.Factories;
 using FarseerPhysics.Controllers;
 using FarseerPhysics;
+#if DEBUG
 using FarseerPhysics.DebugView;
+#endif
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
 
@@ -92,7 +94,7 @@ namespace CS.Components
 
 		public void Render(Global G)
 		{
-			#if DEBUG
+#if DEBUG
 			var proj = Matrix.CreateOrthographicOffCenter(ConvertUnits.ToSimUnits( 0 + _state.camera.position.X - _state.camera.center.X),
 				ConvertUnits.ToSimUnits(G.game.GraphicsDevice.Viewport.Width + _state.camera.position.X - _state.camera.center.X),
 				ConvertUnits.ToSimUnits(G.game.GraphicsDevice.Viewport.Height + _state.camera.position.Y - _state.camera.center.Y),
@@ -102,7 +104,7 @@ namespace CS.Components
 			debugView.RenderDebugData(ref proj);
 			//debugView.DrawString(0, 0, "test");
 			batch.End();
-			#endif
+#endif
 		}
 
 		public void Update(Global G)
@@ -140,7 +142,7 @@ namespace CS.Components
 				if (index != -1)
 				{
 					var trans = transformSys.getComponent(index);
-					trans.position = Vector2.LerpPrecise(ConvertUnits.ToDisplayUnits(components[i].Position), trans.deltaPos, G.dt);
+					trans.position = ConvertUnits.ToDisplayUnits(components[i].Position);
 				}
 
 				}

@@ -30,9 +30,23 @@ namespace LD36
 		static public Queue<string> greeting = new Queue<string>();
 		TextRenderingSystem textrender;
 		Timer ti;
+		public static Dictionary<string, SoundEffectInstance> soundeffects = new Dictionary<string, SoundEffectInstance>();
 		public static ContentManager content;
 		public static bool tutorial = false;
+		List<SoundEffect> sndfxs;
 
+		public static void PlaySound(string name, float vol = 1f, float pitch = 0f, float pan = 0f)
+		{
+			var s = soundeffects[name];
+			if (s.State != SoundState.Playing)
+			{
+				s.Volume = vol;
+				s.Pitch = pitch;
+				s.Pan = pan;
+				s.IsLooped = false;
+				s.Play();
+			}
+		}
 
 		public LD36Game() : base()
 		{
@@ -70,10 +84,23 @@ namespace LD36
 
 		public void loadGameState()
 		{
-			Vector2 center = new Vector2(GraphicsDevice.Viewport.Width/2f, GraphicsDevice.Viewport.Height/2f);
+			Vector2 center = new Vector2(GraphicsDevice.Viewport.Width / 2f, GraphicsDevice.Viewport.Height / 2f);
 			content = Content;
+			sndfxs = new List<SoundEffect>();
 
+			var killsound = Content.Load<SoundEffect>("killsound");
+			var jumpsound = Content.Load<SoundEffect>("jumpsound");
+			var landsound = Content.Load<SoundEffect>("landsound");
+			var powerupsound = Content.Load<SoundEffect>("powerupsound");
+			sndfxs.Add(killsound);
+			sndfxs.Add(jumpsound);
+			sndfxs.Add(landsound);
+			sndfxs.Add(powerupsound);
 
+			soundeffects["killsound"] = killsound.CreateInstance();
+			soundeffects["jumpsound"] = jumpsound.CreateInstance();
+			soundeffects["landsound"] = landsound.CreateInstance();
+			soundeffects["powerupsound"] = powerupsound.CreateInstance();
 
 			G = new Global(this);
 			{
@@ -132,7 +159,7 @@ namespace LD36
 
 		protected override void Initialize()
 		{
-			
+
 			batch = new SpriteBatch(GraphicsDevice);
 			//Initialize GLobal State
 
@@ -141,7 +168,6 @@ namespace LD36
 
 		protected override void LoadContent()
 		{
-			Debug.Print("Loading");
 			loadGameState();
 			base.LoadContent();
 		}
@@ -149,7 +175,7 @@ namespace LD36
 		bool f5Pressed = false;
 		protected override void Update(GameTime gameTime)
 		{
-			if(Keyboard.GetState().IsKeyDown(Keys.Escape))
+			if (Keyboard.GetState().IsKeyDown(Keys.Escape))
 			{
 				Exit();
 			}
@@ -200,7 +226,7 @@ namespace LD36
 			var x = (float)obj.Get("x").Number;
 			var y = (float)obj.Get("y").Number;
 
-			var img = new Image(state, "spike", new Vector2(x+16, y+16), Vector2.Zero, renderLayer);
+			var img = new Image(state, "spike", new Vector2(x + 16, y + 16), Vector2.Zero, renderLayer);
 
 			var physics = state.getSystem<PhysicsSystem>();
 			var body = PhysicsObject.CreateBody(physics, 28, 26, 0);
@@ -252,11 +278,11 @@ namespace LD36
 			var id = state.CreateEntity();
 
 			Transform transfom = new Transform();
-			transfom.position = new Vector2(x + w/2,y + h/2);
+			transfom.position = new Vector2(x + w / 2, y + h / 2);
 			transformSys.AddComponent(id, transfom);
 
 			var physics = state.getSystem<PhysicsSystem>();
-			var body = PhysicsObject.CreateBody(physics, (int) w, (int) h, 0);
+			var body = PhysicsObject.CreateBody(physics, (int)w, (int)h, 0);
 			physics.AddComponent(id, body);
 			body.IsSensor = true;
 			body.UserData = transfom.position;
@@ -265,6 +291,7 @@ namespace LD36
 
 		public static bool killPlayer(Fixture a, Fixture b, Contact c)
 		{
+			LD36.LD36Game.PlaySound("killsound");
 
 			var player = b.Body.UserData as Player;
 			player.setPos(player.spawnPos);
@@ -281,11 +308,12 @@ namespace LD36
 
 		public static bool addJump(Fixture a, Fixture b, Contact c)
 		{
+			LD36.LD36Game.PlaySound("powerupsound");
 
 			var player = b.Body.UserData as Player;
 			player.maxJumps++;
 
-			var pair = (KeyValuePair<State, int>) a.Body.UserData;
+			var pair = (KeyValuePair<State, int>)a.Body.UserData;
 			pair.Key.RemoveEntity(pair.Value);
 			a.Body.OnCollision -= addJump;
 
@@ -302,6 +330,7 @@ namespace LD36
 
 		public static bool addInfinite(Fixture a, Fixture b, Contact c)
 		{
+			LD36.LD36Game.PlaySound("powerupsound");
 
 			var player = b.Body.UserData as Player;
 			player.infinite = true;

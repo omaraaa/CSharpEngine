@@ -64,7 +64,7 @@ class Player
 
 		var c = FixtureFactory.AttachCircle(ConvertUnits.ToSimUnits(bounds.Width / 3f),
 			1f, body, ConvertUnits.ToSimUnits(new Vector2(0, bounds.Height / 2f - bounds.Width / 3f)));
-		side = FixtureFactory.AttachRectangle(ConvertUnits.ToSimUnits(((bounds.Width / 3f)*2)), ConvertUnits.ToSimUnits(bounds.Height / 2), 1f,
+		side = FixtureFactory.AttachRectangle(ConvertUnits.ToSimUnits(((bounds.Width / 3f) * 2)), ConvertUnits.ToSimUnits(bounds.Height / 2), 1f,
 			ConvertUnits.ToSimUnits(new Vector2(0, -(bounds.Height / 2f) / 2f + 14)), body);
 		side.Restitution = 0;
 		side.Friction = 0f;
@@ -95,14 +95,14 @@ class Player
 		physics.AddComponent(id, body);
 
 		var c = FixtureFactory.AttachCircle(ConvertUnits.ToSimUnits(bounds.Width / 3f),
-			1f, body, ConvertUnits.ToSimUnits(new Vector2(0, bounds.Height/2f - bounds.Width / 3f)));
-		side = FixtureFactory.AttachRectangle(ConvertUnits.ToSimUnits(bounds.Width/2f), ConvertUnits.ToSimUnits(bounds.Height/2), 1f,
-			ConvertUnits.ToSimUnits(new Vector2(0, -(bounds.Height/2f)/2f)), body);
+			1f, body, ConvertUnits.ToSimUnits(new Vector2(0, bounds.Height / 2f - bounds.Width / 3f)));
+		side = FixtureFactory.AttachRectangle(ConvertUnits.ToSimUnits(bounds.Width / 2f), ConvertUnits.ToSimUnits(bounds.Height / 2), 1f,
+			ConvertUnits.ToSimUnits(new Vector2(0, -(bounds.Height / 2f) / 2f)), body);
 		side.Restitution = 0;
 		side.Friction = 0f;
 
 
-		leg = FixtureFactory.AttachRectangle(ConvertUnits.ToSimUnits(bounds.Width/2f), ConvertUnits.ToSimUnits(1), 0.001f, new Vector2(0, ConvertUnits.ToSimUnits(bounds.Height / 2f)), body);
+		leg = FixtureFactory.AttachRectangle(ConvertUnits.ToSimUnits(bounds.Width / 2f), ConvertUnits.ToSimUnits(1), 0.001f, new Vector2(0, ConvertUnits.ToSimUnits(bounds.Height / 2f)), body);
 		leg.IsSensor = true;
 		leg.OnCollision += collision;
 		leg.OnSeparation += seperation;
@@ -137,8 +137,9 @@ class Player
 	{
 		if (!b.IsSensor)
 		{
-			if(isTouching == 0)
+			if (isTouching == 0)
 			{
+				LD36.LD36Game.PlaySound("landsound", 0.8f, -0.3f);
 			}
 			isTouching++;
 		}
@@ -146,7 +147,7 @@ class Player
 	}
 	void seperation(Fixture a, Fixture b)
 	{
-		if(!b.IsSensor)
+		if (!b.IsSensor)
 			isTouching--;
 	}
 }
@@ -168,7 +169,7 @@ class PlayerSystem : ComponentSystem<Player>, ISysUpdateable
 
 	public void Update(Global G)
 	{
-		for(int i = 0; i < size; ++i)
+		for (int i = 0; i < size; ++i)
 		{
 			if (entityIDs[i] == -1)
 				continue;
@@ -203,7 +204,7 @@ class PlayerSystem : ComponentSystem<Player>, ISysUpdateable
 
 					moving = true;
 				}
-				if(player.isTouching > 0)
+				if (player.isTouching > 0)
 				{
 					player.jumps = 0;
 				}
@@ -213,6 +214,7 @@ class PlayerSystem : ComponentSystem<Player>, ISysUpdateable
 					vel.Y = -ConvertUnits.ToSimUnits(420);
 					moving = true;
 					player.jumps++;
+					LD36.LD36Game.PlaySound("jumpsound");
 				}
 
 				if (keyState.IsKeyDown(Keys.Space) && vel.Y > 1f && (player.jumps < player.maxJumps || player.infinite))
@@ -220,6 +222,10 @@ class PlayerSystem : ComponentSystem<Player>, ISysUpdateable
 					vel.Y = -ConvertUnits.ToSimUnits(420);
 					moving = true;
 					player.jumps++;
+					if (player.infinite)
+						LD36.LD36Game.PlaySound("jumpsound", 1, 0);
+					else
+						LD36.LD36Game.PlaySound("jumpsound", 1, ((float)player.jumps) / (player.maxJumps + 1));
 
 				}
 			}
@@ -252,7 +258,7 @@ class PlayerSystem : ComponentSystem<Player>, ISysUpdateable
 					}
 				}
 
-				
+
 			}
 
 			if (Math.Abs(vel.X) > maxVel)
@@ -277,7 +283,7 @@ class PlayerSystem : ComponentSystem<Player>, ISysUpdateable
 		if (index != -1)
 			components[index].isControllable = true;
 
-		for(int i = 0; i < size; ++i)
+		for (int i = 0; i < size; ++i)
 		{
 			if (entityIDs[i] == -1 || i == index)
 				continue;

@@ -26,7 +26,7 @@ namespace CS.Components
 {
 	class Texture2
 	{
-		Texture2D texture;
+		public Texture2D texture;
 		public String textureName;
 		public float layerDepth;
 		public Vector2 offset;
@@ -105,12 +105,15 @@ namespace CS.Components
 	{
 		TransformSystem transform;
 		PhysicsSystem physics;
+		Effect effect;
+		float timer = 0;
 
 		public TextureSystem(State state) : base(state, "TextureSystem")
 		{
 			_batch = new SpriteBatch(state.G.game.GraphicsDevice);
 			this.transform = state.getSystem<TransformSystem>();
 			this.physics = state.getSystem<PhysicsSystem>();
+			effect = state.G.game.Content.Load<Effect>("testeffect");
 		}
 
 		SpriteBatch _batch;
@@ -133,20 +136,28 @@ namespace CS.Components
 
 		public void Render(Global G)
 		{
+			timer += G.dt;
 
-			_batch.Begin(sortMode: SpriteSortMode.BackToFront, samplerState: SamplerState.PointWrap, transformMatrix: _state.camera.matrix);
+
+			//effect.Parameters["time"].SetValue(timer);
+
+
+
 			for (int i = 0; i < size; ++i)
 			{
 				if (entityIDs[i] == -1)
 					continue;
 
+			_batch.Begin(sortMode: SpriteSortMode.Immediate, samplerState: SamplerState.PointWrap, transformMatrix: _state.camera.matrix, effect:effect);
 				var transfromIndex = _state.getComponentIndex(entityIDs[i], transform.systemIndex);
 				var transformC = transform.getComponent(transfromIndex);
 				var textureC = components[i];
 
+				//effect.Parameters["SpriteTexture"].SetValue(textureC.texture);
 				int pindex = -1;
 				if (physics != null)
 					pindex = _state.getComponentIndex(entityIDs[i], physics.systemIndex);
+
 				if (pindex != -1)
 				{
 					var p = physics.getComponent(pindex);
@@ -157,8 +168,8 @@ namespace CS.Components
 					textureC.Render(_batch, transformC.position);
 				}
 
-			}
 			_batch.End();
+			}
 		}
 
 		public Rectangle getRect(int id)

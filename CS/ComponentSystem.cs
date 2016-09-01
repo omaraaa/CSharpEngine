@@ -3,16 +3,16 @@ using System;
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Runtime.Serialization;
-using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Input;
-using Microsoft.Xna.Framework.Input.Touch;
-using Microsoft.Xna.Framework.Graphics;
-using MonoGame.Utilities;
+//using Microsoft.Xna.Framework;
+//using Microsoft.Xna.Framework.Input;
+//using Microsoft.Xna.Framework.Input.Touch;
+//using Microsoft.Xna.Framework.Graphics;
+//using MonoGame.Utilities;
 
-using Lidgren.Network;
+//using Lidgren.Network;
 
-using MoonSharp.Interpreter;
-using MoonSharp;
+//using MoonSharp.Interpreter;
+//using MoonSharp;
 
 
 namespace CS
@@ -174,10 +174,6 @@ namespace CS
 
 	interface ISysRenderable
 	{
-		SpriteBatch Batch
-		{
-			get;
-		}
 		void Render(Global G);
 	}
 	/*
@@ -280,70 +276,7 @@ namespace CS
 		}
 	}
 
-	class Camera
-	{
-		public Matrix matrix
-		{
-			get
-			{
-				return
-				Matrix.CreateTranslation(new Vector3(-position.ToPoint().ToVector2(), 0))
-				* Matrix.CreateScale(new Vector3(scale, 0))
-				* Matrix.CreateTranslation(new Vector3(rect.Width / 2f, rect.Height / 2f, 0))
-				;
-			}
-		}
-
-		Rectangle rect;
-		public Vector2 position;
-		public Vector2 scale;
-		public Vector2 center;
-		public float lerpValue = 0.1f;
-		private State _state;
-
-		public Camera(State state)
-		{
-			var width = state.G.game.GraphicsDevice.Viewport.Width;
-			var height = state.G.game.GraphicsDevice.Viewport.Height;
-			rect = new Rectangle(0, 0, width, height);
-			position = new Vector2(rect.Width/2f, rect.Height / 2f);
-			center = position;
-			setScale(new Vector2(1, 1));
-			_state = state;
-		}
-
-		public void SetPosition(Vector2 pos)
-		{
-			position = Vector2.SmoothStep(position, pos, lerpValue);
-		}
-
-		public void setScale(Vector2 scale)
-		{
-			this.scale = scale;
-		}
-
-		public void toCameraScale(ref Vector2 v)
-		{
-			var scale = new Vector2(matrix.Scale.X, matrix.Scale.Y);
-			var pos = new Vector2(matrix.Translation.X, matrix.Translation.Y);
-			v = v / scale - pos / scale;
-		}
-
-		public Vector2 toCameraScale(Vector2 v)
-		{
-			var scale = new Vector2(matrix.Scale.X, matrix.Scale.Y);
-			var pos = new Vector2(matrix.Translation.X, matrix.Translation.Y);
-			v = v / scale - pos / scale;
-			return v;
-		}
-
-		public void toCamera(ref Vector2 v)
-		{
-			var scale = new Vector2(matrix.Scale.X, matrix.Scale.Y);
-			var pos = new Vector2(matrix.Translation.X, matrix.Translation.Y);
-			v = v - pos;
-		}
-	}
+	
 
 
 
@@ -359,7 +292,6 @@ namespace CS
 		public Queue<int> addedEntities;
 
 		public Global G;
-		public Camera camera;
 		public int index;
 
 		public State(Global G)
@@ -372,13 +304,10 @@ namespace CS
 			toRemoveEntities = new Stack<int>();
 			addedEntities = new Queue<int>();
 			this.G = G;
-			if(G != null)
-				camera = new Camera(this);
 		}
 
 		protected void Initialize()
 		{
-			camera = new Camera(this);
 		}
 
 		public int EntitiesCount()
@@ -425,7 +354,7 @@ namespace CS
 			}
 		}
 
-		public void Render(SpriteBatch batch)
+		public void Render()
 		{
 			for (int i = renderableIndexes.Length-1; i >=0; --i)
 			{
@@ -643,6 +572,7 @@ namespace CS
 	class Global : State
 	{
 		private Dictionary<String, Texture2D> textures;
+		private Dictionary<String, Effect> effects;
 		private State[] activeStates;
 		public Game game;
 		public GameTime gametime;
@@ -656,6 +586,7 @@ namespace CS
 		{
 			game = g;
 			textures = new Dictionary<String, Texture2D>();
+			effects = new Dictionary<string, Effect>();
 			activeStates = new State[0];
 			systemsConstructors = new Dictionary<String, DeserializationConstructor>();
 			this.G = this;
@@ -719,6 +650,16 @@ namespace CS
 			else
 			{
 				return textures[name] = game.Content.Load<Texture2D>(name);
+			}
+		}
+
+		public Effect getEffect(String name)
+		{
+			if (effects.ContainsKey(name))
+				return effects[name];
+			else
+			{
+				return effects[name] = game.Content.Load<Effect>(name);
 			}
 		}
 

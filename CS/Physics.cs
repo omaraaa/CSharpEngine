@@ -135,14 +135,14 @@ namespace CS.Components
 			{
 				//if (!components [i].Awake)
 				//	components [i].IsStatic = true;
-				if (entityIDs[i] == -1 || !components[i].Awake)
+				if (entityIDs[i] == -1 || !components[i].Awake || components[i].IsStatic)
 					continue;
 
 				var index = _state.getComponentIndex(entityIDs[i], transformSys.systemIndex);
 				if (index != -1)
 				{
 					var trans = transformSys.getComponent(index);
-					trans.position = ConvertUnits.ToDisplayUnits(components[i].Position);
+					trans.position = Vector2.SmoothStep(ConvertUnits.ToDisplayUnits(components[i].Position), trans.position, G.dt);
 				}
 
 				}

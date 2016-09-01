@@ -52,11 +52,11 @@ namespace LD36
 		{
 			graphics = new GraphicsDeviceManager(this);
 			Content.RootDirectory = "Content";
-			IsFixedTimeStep = false;
-			//graphics.PreferredBackBufferWidth = 1920;
-			//graphics.PreferredBackBufferHeight = 1080;
-			//graphics.IsFullScreen = true;
-			//graphics.ApplyChanges();
+			//IsFixedTimeStep = false;
+			graphics.PreferredBackBufferWidth = 1920;
+			graphics.PreferredBackBufferHeight = 1080;
+			graphics.IsFullScreen = true;
+			graphics.ApplyChanges();
 		}
 
 		public void nextDialog(State state, int id)
@@ -147,7 +147,7 @@ namespace LD36
 				var playerSys = new PlayerSystem(gameState);
 				var cameraFollow = new CameraFollowSystem(gameState);
 
-				gameState.camera.setScale(new Vector2(1, 1));
+				gameState.camera.setScale(new Vector2(2, 2));
 
 				spriteSys.loadJSON("Content/player.json", "player");
 				TiledLoader.LoadTiledLua(gameState, "tilemap.lua");

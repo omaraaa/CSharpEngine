@@ -21,10 +21,19 @@ using FarseerPhysics;
 using Lidgren.Network;
 
 using MoonSharp.Interpreter;
+using MG;
 
 namespace CS.Components
 {
-	class Texture2
+
+	
+
+	public interface IRender
+	{
+		void Render(SpriteBatch batch);
+	}
+
+	class Texture2 : IRender
 	{
 		public Texture2D texture;
 		public String textureName;
@@ -32,14 +41,17 @@ namespace CS.Components
 		public Vector2 offset;
 		public Vector2 scale;
 		public Vector2 origin;
+		public Vector2 position;
+		public float rotation = 0;
 		public Rectangle textureRect;
 		public Rectangle srcRect;
 		public SpriteEffects effect;
 		public bool useCamera = true;
+		public int layer = 0;
 
 		public Texture2(Global G, String textureString, float layer = 0.9f)
 		{
-			this.texture = G.getTexture(textureString);
+			this.texture = G.getSystem<MG.MonogameSystem>().getTexture(textureString);
 			textureName = textureString;
 			this.layerDepth = layer;
 			this.offset = new Vector2(0, 0);
@@ -97,23 +109,126 @@ namespace CS.Components
 			textureRect.Width = (int)((float)srcRect.Width * scale.X);
 			textureRect.Height = (int)((float)srcRect.Height * scale.Y);
 		}
+
+		public void Render(SpriteBatch batch)
+		{
+			resetRect();
+			batch.Draw(texture, position: position, sourceRectangle: srcRect, scale: scale, layerDepth: layerDepth, rotation: rotation, origin: origin, effects: effect);
+		}
 	}
 
+	class Layer
+	{
+		public Effect effect;
+		public int index;
+		public List<IRender> renders;
+		public SpriteSortMode spriteSort = SpriteSortMode.BackToFront;
+		public BlendState blendState = BlendState.NonPremultiplied;
+		public SamplerState samplerState = SamplerState.PointWrap;
+		public DepthStencilState depthState = DepthStencilState.Default;
+		public RasterizerState rasterState = RasterizerState.CullNone;
+		public Camera camera;
+
+		public Layer()
+		{
+			camera = null;
+			renders = new List<IRender>();
+			effect = null;
+		}
+	}
+	class Renderer : BaseSystem, ISysRenderable
+	{
+
+		SortedDictionary<int, Layer> layers;
+		SpriteBatch batch;
+		MonogameSystem monogame;
+		public Renderer(State state) : base(state, "Renderer")
+		{
+			monogame = state.G.getSystem<MonogameSystem>();
+			layers = new SortedDictionary<int, Layer>();
+			batch = new SpriteBatch(monogame.Game.GraphicsDevice);
+		}
+
+		public void PushRender(IRender render, int layerIndex)
+		{
+			if (layers.ContainsKey(layerIndex))
+			{
+				var layer = layers[layerIndex];
+				layer.renders.Add(render);
+			} else
+			{
+				var layer = new Layer();
+				layer.renders.Add(render);
+				AddLayer(layerIndex, layer);
+			}
+		}
+
+		public void RemoveRender(IRender render, int layerIndex)
+		{
+			if (layers.ContainsKey(layerIndex))
+			{
+				var layer = layers[layerIndex];
+				layer.renders.Remove(render);
+			}
+		}
+
+		public void AddLayer(int index, Layer l)
+		{
+			l.index = index;
+			layers[index] = l;
+		}
+
+		public override BaseSystem DeserializeConstructor(State state, string name)
+		{
+			throw new NotImplementedException();
+		}
+
+		public override void DeserializeSystem(BinaryReader reader)
+		{
+			throw new NotImplementedException();
+		}
+
+		public override void SerializeSystem(BinaryWriter writer)
+		{
+			throw new NotImplementedException();
+		}
+
+		void ISysRenderable.Render(Global G)
+		{
+			foreach(var pair in layers)
+			{
+				var layer = pair.Value;
+				if(layer.camera != null)
+					batch.Begin(layer.spriteSort, layer.blendState, layer.samplerState, layer.depthState, layer.rasterState, layer.effect, layer.camera.matrix);
+				else
+					batch.Begin(layer.spriteSort, layer.blendState, layer.samplerState, layer.depthState, layer.rasterState, layer.effect);
 
 
-	class TextureSystem : ComponentSystem<Texture2>, ISysRenderable
+				foreach (var render in layer.renders)
+					render.Render(batch);
+
+				batch.End();
+			}
+		}
+	}
+
+	class TextureSystem : ComponentSystem<Texture2>, ISysUpdateable
 	{
 		TransformSystem transform;
 		PhysicsSystem physics;
+		TextRenderingSystem textrender;
+		Renderer renderer;
 		Effect effect;
 		float timer = 0;
 
 		public TextureSystem(State state) : base(state, "TextureSystem")
 		{
-			_batch = new SpriteBatch(state.G.game.GraphicsDevice);
+			_batch = new SpriteBatch(state.G.getSystem<MG.MonogameSystem>().Game.GraphicsDevice);
 			this.transform = state.getSystem<TransformSystem>();
 			this.physics = state.getSystem<PhysicsSystem>();
-			effect = state.G.game.Content.Load<Effect>("testeffect");
+			textrender = state.getSystem<TextRenderingSystem>();
+			renderer = state.G.getSystem<Renderer>();
+			//effect = state.G.getSystem<MG.MonogameSystem>().Game.Content.Load<Effect>("testeffect");
 		}
 
 		SpriteBatch _batch;
@@ -141,14 +256,12 @@ namespace CS.Components
 
 			//effect.Parameters["time"].SetValue(timer);
 
-
-
+			_batch.Begin(sortMode: SpriteSortMode.BackToFront, samplerState: SamplerState.PointWrap, transformMatrix: _state.getSystem<MG.Camera>().matrix, depthStencilState: DepthStencilState.DepthRead);
 			for (int i = 0; i < size; ++i)
 			{
 				if (entityIDs[i] == -1)
 					continue;
 
-			_batch.Begin(sortMode: SpriteSortMode.Immediate, samplerState: SamplerState.PointWrap, transformMatrix: _state.camera.matrix, effect:effect);
 				var transfromIndex = _state.getComponentIndex(entityIDs[i], transform.systemIndex);
 				var transformC = transform.getComponent(transfromIndex);
 				var textureC = components[i];
@@ -168,8 +281,10 @@ namespace CS.Components
 					textureC.Render(_batch, transformC.position);
 				}
 
-			_batch.End();
 			}
+			if(textrender != null)
+				textrender.Render(ref _batch);
+			_batch.End();
 		}
 
 		public Rectangle getRect(int id)
@@ -247,6 +362,46 @@ namespace CS.Components
 		public override void DeserializeSystem(BinaryReader reader)
 		{
 		}
+
+		public void Update(Global G)
+		{
+			for (int i = 0; i < size; ++i)
+			{
+				if (entityIDs[i] == -1)
+					continue;
+
+				var transfromIndex = _state.getComponentIndex(entityIDs[i], transform.systemIndex);
+				var transformC = transform.getComponent(transfromIndex);
+				var textureC = components[i];
+
+				//effect.Parameters["SpriteTexture"].SetValue(textureC.texture);
+				int pindex = -1;
+				if (physics != null)
+					pindex = _state.getComponentIndex(entityIDs[i], physics.systemIndex);
+
+
+				textureC.position = transformC.position;
+				if (pindex != -1)
+				{
+					var p = physics.getComponent(pindex);
+					textureC.rotation = p.Rotation;
+				}
+
+				
+			}
+		}
+
+		public override int AddComponent(int id, Texture2 component)
+		{
+			renderer.PushRender(component, component.layer);
+			return base.AddComponent(id, component);
+		}
+
+		public override void RemoveEntity(int id)
+		{
+			renderer.RemoveRender(components[id], components[id].layer);
+			base.RemoveEntity(id);
+		}
 	}
 
 	class FontSystem : BaseSystem
@@ -286,7 +441,7 @@ namespace CS.Components
 		{
 			if (!fonts.ContainsKey(name))
 			{
-				var content = _state.G.game.Content;
+				var content = _state.G.getSystem<MG.MonogameSystem>().Game.Content;
 				var font = content.Load<SpriteFont>(name);
 				fonts[name] = font;
 				return font;
@@ -303,7 +458,7 @@ namespace CS.Components
 		LEFT, CENTER, RIGHT
 	}
 
-	struct Text
+	class Text : IRender
 	{
 		public String String { get; set; }
 		//public Rectangle Bounds { get; set; }
@@ -311,7 +466,8 @@ namespace CS.Components
 		public SpriteFont Font { get; private set; }
 		public string FontName { get; private set; }
 		public Color Color { get; set; }
-		public float Layer { get; set; }
+		public float depth { get; set; }
+		public int layer = 0;
 		public Align Alignment { get; set; }
 		
 		public Text(string text, Vector2 pos, FontSystem fsys, string fontName)
@@ -321,10 +477,21 @@ namespace CS.Components
 			Font = null;
 			FontName = "";
 			Color = Color.White;
-			Layer = 0.9f;
+			depth = 0.9f;
 			Alignment = Align.CENTER;
 
 			SetFont(fsys, fontName);
+		}
+
+		public Text()
+		{
+			String = "";
+			Position = Vector2.Zero;
+			Font = null;
+			FontName = "";
+			Color = Color.White;
+			depth = 0.9f;
+			Alignment = Align.CENTER;
 		}
 
 		public void SetFont(FontSystem fontSys, string name)
@@ -332,17 +499,36 @@ namespace CS.Components
 			Font = fontSys.LoadFont(name);
 			FontName = name;
 		}
+
+		public void Render(SpriteBatch batch)
+		{
+			Vector2 textMiddlePoint = Vector2.Zero;
+			switch (Alignment)
+			{
+				case Align.CENTER:
+					textMiddlePoint = Font.MeasureString(String) / 2;
+					break;
+				case Align.RIGHT:
+					textMiddlePoint = Font.MeasureString(String);
+					break;
+				case Align.LEFT:
+					break;
+			}
+			batch.DrawString(Font, String, Position - textMiddlePoint, Color, 0, Vector2.Zero, 1, SpriteEffects.None, depth);
+		}
 	}
 
-	class TextRenderingSystem : ComponentSystem<Text>, ISysUpdateable, ISysRenderable
+	class TextRenderingSystem : ComponentSystem<Text>, ISysUpdateable
 	{
 		FontSystem fontSys;
 		TransformSystem tranSys;
+		Renderer renderer;
 		public TextRenderingSystem(State state) : base(state, "TextRenderingSystem")
 		{
-			Batch = new SpriteBatch(state.G.game.GraphicsDevice);
+			Batch = new SpriteBatch(state.G.getSystem<MG.MonogameSystem>().Game.GraphicsDevice);
 			fontSys = state.G.getSystem<FontSystem>();
 			tranSys = state.getSystem<TransformSystem>();
+			renderer = state.G.getSystem<Renderer>();
 		}
 
 		public SpriteBatch Batch
@@ -360,36 +546,9 @@ namespace CS.Components
 		{
 		}
 
-		public void Render(Global G)
+		public void Render(ref SpriteBatch batch)
 		{
-			Batch.Begin();
-			for(int i = 0; i < size; ++i)
-			{
-				if (entityIDs[i] == -1)
-					continue;
-
-				var textC = components[i];
-				int transIndex = -1;
-				if(tranSys.ContainsEntity(entityIDs[i], ref transIndex))
-				{
-					var trans = tranSys.getComponent(transIndex);
-					textC.Position = trans.position;
-				}
-				Vector2 textMiddlePoint = Vector2.Zero;
-				switch(textC.Alignment)
-				{
-					case Align.CENTER:
-						textMiddlePoint = textC.Font.MeasureString(textC.String) / 2;
-						break;
-					case Align.RIGHT:
-						textMiddlePoint = textC.Font.MeasureString(textC.String);
-						break;
-					case Align.LEFT:
-						break;
-				}
-				Batch.DrawString(textC.Font, textC.String, textC.Position - textMiddlePoint, textC.Color, 0, Vector2.Zero, 1, SpriteEffects.None, textC.Layer);
-			}
-			Batch.End();
+			
 		}
 
 		public override void SerializeSystem(BinaryWriter writer)
@@ -398,7 +557,20 @@ namespace CS.Components
 
 		public void Update(Global G)
 		{
-			
+			for (int i = 0; i < size; ++i)
+			{
+				if (entityIDs[i] == -1)
+					continue;
+
+				var textC = components[i];
+				int transIndex = -1;
+				if (tranSys.ContainsEntity(entityIDs[i], ref transIndex))
+				{
+					var trans = tranSys.getComponent(transIndex);
+					textC.Position = trans.position;
+				}
+
+			}
 		}
 
 		protected override Text DeserailizeComponent(BinaryReader reader)
@@ -429,6 +601,18 @@ namespace CS.Components
 			writer.Write(component.Color.G);
 			writer.Write(component.Color.B);
 			writer.Write(component.Color.A);
+		}
+
+		public override int AddComponent(int id, Text component)
+		{
+			renderer.PushRender(component, component.layer);
+			return base.AddComponent(id, component);
+		}
+
+		public override void RemoveEntity(int id)
+		{
+			renderer.RemoveRender(components[id], components[id].layer);
+			base.RemoveEntity(id);
 		}
 	}
 }

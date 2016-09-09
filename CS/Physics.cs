@@ -22,6 +22,7 @@ using FarseerPhysics.DebugView;
 #endif
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
+using MG;
 
 namespace CS.Components
 {
@@ -71,10 +72,10 @@ namespace CS.Components
 			//Settings.DefaultFixtureIgnoreCCDWith = Category.All;
 #if DEBUG
 			debugView = new DebugViewXNA(world);
-			debugView.LoadContent(G.game.GraphicsDevice, G.game.Content);
+			debugView.LoadContent(G.getSystem<MonogameSystem>().Game.GraphicsDevice, G.getSystem<MonogameSystem>().Game.Content);
 			debugView.Enabled = true;
 #endif
-			batch = new SpriteBatch(G.game.GraphicsDevice);
+			batch = new SpriteBatch(G.getSystem<MonogameSystem>().Game.GraphicsDevice);
 		}
 
 		public SpriteBatch Batch
@@ -95,11 +96,12 @@ namespace CS.Components
 		public void Render(Global G)
 		{
 #if DEBUG
-			var proj = Matrix.CreateOrthographicOffCenter(ConvertUnits.ToSimUnits( 0 + _state.camera.position.X - _state.camera.center.X),
-				ConvertUnits.ToSimUnits(G.game.GraphicsDevice.Viewport.Width + _state.camera.position.X - _state.camera.center.X),
-				ConvertUnits.ToSimUnits(G.game.GraphicsDevice.Viewport.Height + _state.camera.position.Y - _state.camera.center.Y),
-				ConvertUnits.ToSimUnits(0 + _state.camera.position.Y - _state.camera.center.Y),
-				0, 100) * Matrix.CreateScale(new Vector3(_state.camera.scale, 0));
+			var camera = _state.getSystem<Camera>();
+			var proj = Matrix.CreateOrthographicOffCenter(ConvertUnits.ToSimUnits( 0 + camera.position.X - camera.center.X),
+				ConvertUnits.ToSimUnits(G.getSystem<MonogameSystem>().Game.GraphicsDevice.Viewport.Width + camera.position.X - camera.center.X),
+				ConvertUnits.ToSimUnits(G.getSystem<MonogameSystem>().Game.GraphicsDevice.Viewport.Height + camera.position.Y - camera.center.Y),
+				ConvertUnits.ToSimUnits(0 + camera.position.Y - camera.center.Y),
+				0, 100) * Matrix.CreateScale(new Vector3(camera.scale, 0));
 			batch.Begin();
 			debugView.RenderDebugData(ref proj);
 			//debugView.DrawString(0, 0, "test");
@@ -142,7 +144,8 @@ namespace CS.Components
 				if (index != -1)
 				{
 					var trans = transformSys.getComponent(index);
-					trans.position = Vector2.SmoothStep(ConvertUnits.ToDisplayUnits(components[i].Position), trans.position, G.dt);
+					trans.position = 
+						ConvertUnits.ToDisplayUnits(components[i].Position);
 				}
 
 				}
@@ -189,7 +192,7 @@ namespace CS.Components
 			world.ProcessChanges();
 #if DEBUG
 			debugView = new DebugViewXNA(world);
-			debugView.LoadContent(_state.G.game.GraphicsDevice, _state.G.game.Content);
+			debugView.LoadContent(_state.G.getSystem<MonogameSystem>().Game.GraphicsDevice, _state.G.getSystem<MonogameSystem>().Game.Content);
 			debugView.Enabled = true;
 #endif
 

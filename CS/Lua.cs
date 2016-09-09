@@ -11,6 +11,7 @@ using System.IO;
 using System.Reflection;
 using System.Text;
 using System.Diagnostics;
+using MG;
 
 namespace CS.Components
 {
@@ -84,7 +85,7 @@ namespace CS.Components
 
 
 
-			luaScript.Globals["ContentDir"] = G.game.Content.RootDirectory;
+			luaScript.Globals["ContentDir"] = G.getSystem<MonogameSystem>().Game.Content.RootDirectory;
 			ConstructorInfo constinfo = typeof(LuaSystem).GetConstructor(new[] { typeof(State), typeof(string) });
 			luaScript.Globals["LuaSystem"] = constinfo;
 			constinfo = typeof(LuaEntitySystem).GetConstructor(new[] { typeof(State), typeof(string) });

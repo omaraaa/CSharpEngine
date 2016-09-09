@@ -3,16 +3,7 @@ using System;
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Runtime.Serialization;
-//using Microsoft.Xna.Framework;
-//using Microsoft.Xna.Framework.Input;
-//using Microsoft.Xna.Framework.Input.Touch;
-//using Microsoft.Xna.Framework.Graphics;
-//using MonoGame.Utilities;
-
-//using Lidgren.Network;
-
-//using MoonSharp.Interpreter;
-//using MoonSharp;
+using System.Diagnostics;
 
 
 namespace CS
@@ -28,12 +19,22 @@ namespace CS
 		public int renderIndex = -1;
 		public String name;
 
+		static public int Order()
+		{
+			return 0;
+		}
+
 		public BaseSystem(State state, String name)
 		{
 			_state = state;
 			systemIndex = state.RegisterSystem(this);
 			this.name = name;
 			state.G.RegisterSystemSerialization(name, DeserializeConstructor);
+		}
+
+		virtual public void Initialize()
+		{
+
 		}
 
 		abstract public void SerializeSystem(BinaryWriter writer);
@@ -320,7 +321,7 @@ namespace CS
 			var size = systems.Length;
 			size++;
 			Array.Resize(ref systems, size);
-
+			var type = system.GetType();
 			systems[size - 1] = system;
 
 			if(system is ISysUpdateable)
@@ -571,37 +572,21 @@ namespace CS
 	[Serializable()]
 	class Global : State
 	{
-		private Dictionary<String, Texture2D> textures;
-		private Dictionary<String, Effect> effects;
 		private State[] activeStates;
-		public Game game;
-		public GameTime gametime;
 		public float dt;
-		public MouseState mouseState;
-		public TouchCollection touchCollection;
-		public KeyboardState keyboardState;
 		public Dictionary<String, DeserializationConstructor> systemsConstructors;
 
-		public Global(Game g) : base(null)
+		public Global() : base(null)
 		{
-			game = g;
-			textures = new Dictionary<String, Texture2D>();
-			effects = new Dictionary<string, Effect>();
 			activeStates = new State[0];
 			systemsConstructors = new Dictionary<String, DeserializationConstructor>();
 			this.G = this;
 			Initialize();
 		}
 
-		public void Update(GameTime gametime)
+		public void Update(float deltaTime)
 		{
-			this.gametime = gametime;
-			dt = (float) gametime.ElapsedGameTime.TotalSeconds;
-
-			mouseState = Mouse.GetState();
-			touchCollection = TouchPanel.GetState();
-			keyboardState = Keyboard.GetState();
-
+			dt = deltaTime;
 			base.Update();
 
 			foreach (State s in activeStates)
@@ -610,14 +595,14 @@ namespace CS
 			}
 		}
 
-		public new void Render(SpriteBatch batch)
+		public new void Render()
 		{
 
 			foreach (State s in activeStates)
 			{
-				s.Render(batch);
+				s.Render();
 			}
-			base.Render(batch);
+			base.Render();
 		}
 
 		public void ActivateState(State s)
@@ -636,31 +621,6 @@ namespace CS
 		public void setState(int index, State state)
 		{
 			activeStates[index] = state;
-		}
-
-		private void loadTexture(String name)
-		{
-			textures[name] = game.Content.Load<Texture2D>(name);
-		}
-
-		public Texture2D getTexture(String name)
-		{
-			if (textures.ContainsKey(name))
-				return textures[name];
-			else
-			{
-				return textures[name] = game.Content.Load<Texture2D>(name);
-			}
-		}
-
-		public Effect getEffect(String name)
-		{
-			if (effects.ContainsKey(name))
-				return effects[name];
-			else
-			{
-				return effects[name] = game.Content.Load<Effect>(name);
-			}
 		}
 
 		public void Serialize(Stream fs)
@@ -730,14 +690,3 @@ namespace CS
 		}
 	}
 }
-
-/*
-G.registerComponent<Position>();
-G.registerComponent<PositonPhysics>(typeof(Position));
-G.registerComponent<Collider>(typeof(Position));
-
-var entity = state.createEntitiy();
-var t = Transform.add(entity, 0, 0);
-var s = Sprite.add(entity, G.texture("player"));
-var c = Collider.add(entity, s.getLocalRect());
-*/

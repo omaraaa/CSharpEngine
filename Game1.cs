@@ -12,6 +12,7 @@ using CS;
 using CS.Components;
 using Util;
 using Entities;
+using MG;
 
 using Lidgren.Network;
 using Lidgren;
@@ -116,9 +117,12 @@ namespace TankComProject
 
 			fpsGraph = new DebugGraph(GraphicsDevice, new Rectangle(0, 50, 200, 25), 100, 60);
 
-			G = new Global(this);
+			G = new Global();
+			var monogame = new MG.MonogameSystem(G);
+			monogame.Game = this;
+			var renderer = new Renderer(G);
+			var camerag = new Camera(G);
 			var msgSys = new MessageSystem(G);
-			var inputSys = new InputSystem(G);
 			var GLuaSys = new GlobalLuaSystem(G);
 			var fontSys = new FontSystem(G);
 			var callbackRegistry = new RegistrySystem<CallBack>(G, "CallBackRegistry");
@@ -126,7 +130,12 @@ namespace TankComProject
 			callbackRegistry.Register("Start", TimerSystem.KillEntity);
 
 			state = new State(G);
+			var camera = new Camera(state);
+			var layer = new Layer();
+			layer.camera = camera;
+			renderer.AddLayer(0, layer);
 			State guiState = new State(G);
+			var camera2 = new Camera(guiState);
 
 #if ANDROID
 			state.camera.scale = new Vector2(4, 4);
@@ -145,8 +154,7 @@ namespace TankComProject
 			mousesys = new MouseFollowSystem(state);
 			ddSys = new DragAndDropSystem(state);
 			playerSys = new PlayerSystem(state);
-			TimerSystem timerSys = new TimerSystem(state);
-			GUISystem guiSys = new GUISystem(state);
+			//GUISystem guiSys = new GUISystem(state);
 			var gridfunc = GLuaSys.luaScript.Globals.Get("CreateGridSystem");
 			GLuaSys.luaScript.Call(gridfunc, state);
 
@@ -158,6 +166,7 @@ namespace TankComProject
 			SpriteSystem sprSys2 = new SpriteSystem(guiState);
 			MouseFollowSystem mousesys2 = new MouseFollowSystem(guiState);
 			DragAndDropSystem ddSys2 = new DragAndDropSystem(guiState);
+			TimerSystem timerSys = new TimerSystem(guiState);
 			GUISystem guiSys2 = new GUISystem(guiState);
 			//PlayerSystem playerSys2 = new PlayerSystem(guiState);
 			
@@ -168,7 +177,7 @@ namespace TankComProject
 			//sprSys.CreateGridFrames("player", 30, 27);
 			{
 				sprSys.loadJSON("Content/player.json", "player");
-				sprSys.loadJSON("Content/button.json", "button");
+				sprSys2.loadJSON("Content/button.json", "button");
 			}
 
 			//state.RegisterSystem(transSys);
@@ -179,17 +188,20 @@ namespace TankComProject
 				Image img = new Image(guiState, "cursor", Vector2.Zero, new Vector2(9, 9), 0.1f);
 				mousesys2.AddEntity(img.id);
 			}
-			{ 
-				Text textObj = new Text();
-				textObj.Color = Color.White;
-				textObj.SetFont(fontSys, "font");
-				textObj.String = "Start";
-				textObj.Alignment = Align.CENTER;
-				var id = GUISystem.CreateButton(state, textObj, "button", new Rectangle(400, 400, 600, 200), "KillEntity", 0.5f);
-				GUISystem.CreateButton(state, textObj, "button", new Rectangle(100, 200, 600, 200), "KillEntity", 0.5f);
-				GUISystem.CreateButton(state, textObj, "button", new Rectangle(0, 0, 600, 200), "KillEntity", 0.5f);
-				GUISystem.CreateButton(state, textObj, "button", new Rectangle(600, 200, 600, 200), "KillEntity", 0.5f);
-				GUISystem.CreateButton(state, textObj, "button", new Rectangle(400, 200, 600, 200), "KillEntity", 0.5f);
+			{
+				for(int i = 0; i < 4; ++i)
+				{
+					Text textObj = new Text();
+					textObj.Color = Color.White;
+					textObj.SetFont(fontSys, "font");
+					textObj.String = "Start";
+					textObj.Alignment = Align.CENTER;
+					var id = GUISystem.CreateButton(guiState, textObj, "button", new Rectangle(100*i, 400, 600 / 2, 200 / 2), "KillEntity", 0.5f);
+				}
+				/*GUISystem.CreateButton(guiState, textObj, "button", new Rectangle(100, 200, 600, 200), "KillEntity", 0.5f);
+				GUISystem.CreateButton(guiState, textObj, "button", new Rectangle(0, 0, 600, 200), "KillEntity", 0.5f);
+				GUISystem.CreateButton(guiState, textObj, "button", new Rectangle(600, 200, 600, 200), "KillEntity", 0.5f);
+				GUISystem.CreateButton(guiState, textObj, "button", new Rectangle(400, 200, 600, 200), "KillEntity", 0.5f);*/
 			}
 			/*
 			var thickness = 32;
@@ -604,7 +616,7 @@ namespace TankComProject
 			var dmy = mousestate.Y;
 			mousestate = Mouse.GetState();
 			var touch = TouchPanel.GetState();
-			var scale = state.camera.matrix.Scale;
+			var scale = state.getSystem<Camera>().matrix.Scale;
 			/*if (G.mouseState.RightButton == ButtonState.Pressed || touch.Count == 2)
 			{
 				var e = state.CreateEntity();
@@ -655,7 +667,7 @@ namespace TankComProject
 				peer.SendMessage(msg, peer.Connections[0], NetDeliveryMethod.ReliableOrdered);
 			}
 			
-			G.Update(gameTime);
+			G.Update((float)gameTime.ElapsedGameTime.TotalSeconds);
 			if(server.Status == NetPeerStatus.Running && state.addedEntities.Count > 0)
 			{
 				
@@ -759,13 +771,13 @@ namespace TankComProject
 
 			//fpsGraph.Update(fpsTime);
 
-			if (G.keyboardState.IsKeyDown(Keys.F11))
+			if (G.getSystem<MG.MonogameSystem>().keyboardState.IsKeyDown(Keys.F11))
 			{
 				fs = new FileStream("data", FileMode.OpenOrCreate, FileAccess.ReadWrite);
 				G.Serialize(fs);
 				fs.Close();
 			}
-			if (G.keyboardState.IsKeyDown(Keys.F12))
+			if (G.getSystem<MG.MonogameSystem>().keyboardState.IsKeyDown(Keys.F12))
 			{
 				fs = new FileStream("data", FileMode.OpenOrCreate, FileAccess.ReadWrite);
 				G.Deserialize(fs);
@@ -790,7 +802,7 @@ namespace TankComProject
 			{ 
 				Vector2 textMiddlePoint = font.MeasureString("HELLO") / 2;
 				// Places text in center of the screen
-				G.Render(spriteBatch);
+				G.Render();
 #if DEBUG
 				spriteBatch.DrawString(font, "FPS: " + fpsTime.ToString(), position, Color.White, 0, Vector2.Zero, 1f, SpriteEffects.None, 0.9f);
 				spriteBatch.DrawString(font, "Memory:" + GC.GetTotalMemory(false) / 1024, new Vector2(0, 10), Color.White, 0, Vector2.Zero, 1f, SpriteEffects.None, 0.9f);

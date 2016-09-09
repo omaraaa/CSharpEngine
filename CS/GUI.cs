@@ -5,76 +5,11 @@ using System.IO;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Input.Touch;
 using Microsoft.Xna.Framework;
+using MG;
 
 namespace CS.Components
 {
-	class InputSystem : BaseSystem, ISysUpdateable
-	{
-		MouseState mouseState;
-		public bool IsMouseCaptured { get; set; }
-		KeyboardState keyboardState;
-		private List<Keys> lastKeyboardState;
-		private List<Keys> pressedKeys;
-		private List<Keys> releasedKeys;
-
-		public InputSystem(State state) : base(state, "InputSystem")
-		{
-			IsMouseCaptured = false;
-			lastKeyboardState = new List<Keys>();
-			pressedKeys = new List<Keys>();
-			releasedKeys = new List<Keys>();
-		}
-
-		public override BaseSystem DeserializeConstructor(State state, string name)
-		{
-			return new InputSystem(state);
-		}
-
-		public override void DeserializeSystem(BinaryReader reader)
-		{
-		}
-
-		public override void SerializeSystem(BinaryWriter writer)
-		{
-		}
-
-		public void Update(Global G)
-		{
-			pressedKeys.Clear();
-			releasedKeys.Clear();
-			IsMouseCaptured = false;
-			mouseState = G.mouseState;
-			keyboardState = G.keyboardState;
-			var keys = keyboardState.GetPressedKeys();
-
-			foreach(Keys key in keys)
-			{
-				if (!lastKeyboardState.Contains(key))
-				{
-					pressedKeys.Add(key);
-				}
-			}
-
-			lastKeyboardState =  new List<Keys>(keys);
-		}
-
-		public MouseState getMouseState()
-		{
-			return mouseState;
-		}
-
-		public bool GetJustPressed(out Keys[] keys)
-		{
-			keys = pressedKeys.ToArray();
-			
-			return pressedKeys.Count != 0;
-		}
-
-		public bool JustPressed(Keys key)
-		{
-			return pressedKeys.Contains(key);
-		}
-	}
+	
 
 	class MessageSystem : BaseSystem, ISysUpdateable
 	{
@@ -92,12 +27,10 @@ namespace CS.Components
 
 		public override void DeserializeSystem(BinaryReader reader)
 		{
-			throw new NotImplementedException();
 		}
 
 		public override void SerializeSystem(BinaryWriter writer)
 		{
-			throw new NotImplementedException();
 		}
 
 		public void Update(Global G)
@@ -157,7 +90,7 @@ namespace CS.Components
 			this.rect = rect;
 			pressed = false;
 			canPress = false;
-			state.G.game.Window.TextInput += UpdateTextField;
+			state.G.getSystem<MonogameSystem>().Game.Window.TextInput += UpdateTextField;
 		}
 
 		public void UpdateTextField(object obj, TextInputEventArgs args)
@@ -168,9 +101,10 @@ namespace CS.Components
 		public override void Update(ref State state, int id)
 		{
 			var spriteSys = state.getSystem<SpriteSystem>();
-			var inputSys = state.G.getSystem<InputSystem>();
+			var inputSys = state.G.getSystem<MonogameSystem>();
 			var textureSys = state.getSystem<TextureSystem>();
 			var textSys = state.getSystem<TextRenderingSystem>();
+			var camera = state.getSystem<Camera>();
 
 			if (inputSys.IsMouseCaptured)
 				return;
@@ -188,7 +122,7 @@ namespace CS.Components
 			var mouseState = inputSys.getMouseState();
 			if (IsActive)
 			{
-				if (textureSys.getRect(id).Contains(state.camera.toCameraScale(mouseState.Position.ToVector2())))
+				if (textureSys.getRect(id).Contains(camera.toCameraScale(mouseState.Position.ToVector2())))
 				{
 					if (mouseState.LeftButton == ButtonState.Pressed && canPress)
 					{
@@ -259,7 +193,7 @@ namespace CS.Components
 	{
 		TransformSystem transSys;
 		TextureSystem textureSys;
-		InputSystem inputSys;
+		MonogameSystem monogameSys;
 
 		public GUISystem(State state) : base(state, "GUISystem")
 		{
@@ -287,7 +221,7 @@ namespace CS.Components
 
 		public override BaseSystem DeserializeConstructor(State state, string name)
 		{
-			throw new NotImplementedException();
+			return new GUISystem(state);
 		}
 
 		public void Update(Global G)
@@ -324,7 +258,7 @@ namespace CS.Components
 			spriteSys.AddComponent(e, sprite);
 
 			texture.setRect(rect.Width, rect.Height);
-			text.Layer = layer;
+			text.depth = layer - 0.1f;
 			textSys.AddComponent(e, text);
 
 			var buttonElement = new GUIButton(state, rect);

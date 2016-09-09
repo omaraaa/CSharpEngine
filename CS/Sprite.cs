@@ -187,7 +187,7 @@ namespace CS.Components
 
 		public void CreateGridFrames(String textureName, int frameWidth, int framwHeight)
 		{
-			var tex = _state.G.getTexture(textureName);
+			var tex = _state.G.getSystem<MG.MonogameSystem>().getTexture(textureName);
 			var w = tex.Width;
 			var h = tex.Height;
 			var wc = w / frameWidth;

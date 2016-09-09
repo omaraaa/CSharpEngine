@@ -53,10 +53,10 @@ namespace LD36
 			graphics = new GraphicsDeviceManager(this);
 			Content.RootDirectory = "Content";
 			//IsFixedTimeStep = false;
-			graphics.PreferredBackBufferWidth = 1920;
-			graphics.PreferredBackBufferHeight = 1080;
-			graphics.IsFullScreen = true;
-			graphics.ApplyChanges();
+			//graphics.PreferredBackBufferWidth = 1920;
+			//graphics.PreferredBackBufferHeight = 1080;
+			//graphics.IsFullScreen = true;
+			//graphics.ApplyChanges();
 		}
 
 		public void nextDialog(State state, int id)
@@ -101,10 +101,13 @@ namespace LD36
 			soundeffects["jumpsound"] = jumpsound.CreateInstance();
 			soundeffects["landsound"] = landsound.CreateInstance();
 			soundeffects["powerupsound"] = powerupsound.CreateInstance();
-
-			G = new Global(this);
+			Renderer renderer;
+			G = new Global();
 			{
-
+				var monogame = new MG.MonogameSystem(G);
+				monogame.Game = this;
+				renderer = new Renderer(G);
+				var camera = new MG.Camera(G);
 				var fontsys = new FontSystem(G);
 				var transSys = new TransformSystem(G);
 				var textureSys = new TextureSystem(G);
@@ -140,14 +143,17 @@ namespace LD36
 
 			gameState = new State(G);
 			{
+				var camera = new MG.Camera(gameState);
 				var transSys = new TransformSystem(gameState);
+				var cameraFollow = new CameraFollowSystem(gameState);
 				var physics = new PhysicsSystem(gameState);
 				var textureSys = new TextureSystem(gameState);
 				var spriteSys = new SpriteSystem(gameState);
 				var playerSys = new PlayerSystem(gameState);
-				var cameraFollow = new CameraFollowSystem(gameState);
-
-				gameState.camera.setScale(new Vector2(2, 2));
+				var layer = new Layer();
+				layer.camera = camera;
+				renderer.AddLayer(0, layer);
+				gameState.getSystem<MG.Camera>().setScale(new Vector2(2, 2));
 
 				spriteSys.loadJSON("Content/player.json", "player");
 				TiledLoader.LoadTiledLua(gameState, "tilemap.lua");
@@ -196,7 +202,7 @@ namespace LD36
 			if (Keyboard.GetState().IsKeyUp(Keys.F5))
 				f5Pressed = false;
 
-			G.Update(gameTime);
+			G.Update((float) gameTime.ElapsedGameTime.TotalSeconds);
 			base.Update(gameTime);
 		}
 
@@ -205,7 +211,7 @@ namespace LD36
 			GraphicsDevice.Clear(Color.Black);
 
 			batch.Begin();
-			G.Render(batch);
+			G.Render();
 			batch.End();
 			base.Draw(gameTime);
 		}

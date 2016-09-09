@@ -21,6 +21,7 @@ using FarseerPhysics;
 using Lidgren.Network;
 
 using MoonSharp.Interpreter;
+using MG;
 
 namespace CS.Components
 {
@@ -114,9 +115,19 @@ namespace CS.Components
 	class MouseFollowSystem : EntitySystem, ISysUpdateable
 	{
 		private TransformSystem transform;
+		private MonogameSystem monogameSys;
+		private Camera camera;
 		public MouseFollowSystem(State state) : base(state, "MouseFollow")
 		{
 			transform = state.getSystem<TransformSystem>();
+			monogameSys = state.G.getSystem<MonogameSystem>();
+			camera = state.getSystem<Camera>();
+		}
+
+
+		public override void Initialize()
+		{
+			base.Initialize();
 		}
 
 		private uint updateindex;
@@ -142,18 +153,18 @@ namespace CS.Components
 				float tx = 0;
 				float ty = 0;
 
-				foreach (TouchLocation tl in G.touchCollection)
+				foreach (TouchLocation tl in monogameSys.touchCollection)
 				{
 					tx = tl.Position.X;
 					ty = tl.Position.Y;
 				}
 
-				float mx = tx + G.mouseState.X;
-				float my = ty + G.mouseState.Y;
+				float mx = tx + monogameSys.mouseState.X;
+				float my = ty + monogameSys.mouseState.Y;
 
 				pos.X = mx;
 				pos.Y = my;
-				_state.camera.toCameraScale(ref pos);
+				camera.toCameraScale(ref pos);
 				transformC.position = pos;
 			}
 		}
@@ -180,10 +191,14 @@ namespace CS.Components
 		TransformSystem transSys;
 		TextureSystem textureSystem;
 		Rectangle rect;
+
+		Camera camera;
+
 		public CameraFollowSystem(State state) : base(state, "CameraFollowSystem")
 		{
 			transSys = state.getSystem<TransformSystem>();
 			textureSystem = state.getSystem<TextureSystem>();
+			camera = state.getSystem<Camera>();
 			rect = new Rectangle(0, 0, 100, 100);
 		}
 
@@ -199,8 +214,11 @@ namespace CS.Components
 				var index = _state.getComponentIndex(followID, transSys.systemIndex);
 				if (index != -1)
 				{
-					var pos = transSys.getComponent(index).position;
-					_state.camera.SetPosition(pos);
+					var trans = transSys.getComponent(index);
+					var dist = Vector2.Distance(trans.position, trans.deltaPos)/ _state.G.dt;
+					var pos = trans.position + (trans.position - trans.deltaPos)/ _state.G.dt;
+					pos = Vector2.SmoothStep(camera.position, pos, 1 - (float)Math.Exp(-(10 + dist) * _state.G.dt));
+					camera.SetPosition(pos);
 				}
 			}
 		}
@@ -239,6 +257,8 @@ namespace CS.Components
 		TextureSystem textureSys;
 		TransformSystem transfromSys;
 		PhysicsSystem physics;
+		Camera camera;
+		MonogameSystem monogameSys;
 
 		public DragAndDropSystem(State state) : base(state, "DragAndDrop")
 		{
@@ -246,6 +266,8 @@ namespace CS.Components
 			textureSys = _state.getSystem<TextureSystem>();
 			transfromSys = _state.getSystem<TransformSystem>();
 			physics = _state.getSystem<PhysicsSystem>();
+			camera = state.getSystem<Camera>();
+			monogameSys = _state.G.getSystem<MonogameSystem>();
 		}
 
 		public uint UpdateIndex
@@ -258,16 +280,16 @@ namespace CS.Components
 
 		public void Update(Global G)
 		{
-			var pos = new Vector2(G.mouseState.X, G.mouseState.Y);
-			_state.camera.toCameraScale(ref pos);
+			var pos = new Vector2(monogameSys.mouseState.X, monogameSys.mouseState.Y);
+			camera.toCameraScale(ref pos);
 			float mx = pos.X;
 			float my = pos.Y;
-			bool leftPressed = G.mouseState.LeftButton == ButtonState.Pressed;
+			bool leftPressed = monogameSys.mouseState.LeftButton == ButtonState.Pressed;
 
-			foreach (TouchLocation tl in G.touchCollection)
+			foreach (TouchLocation tl in monogameSys.touchCollection)
 			{
 				var pos2 = new Vector2(tl.Position.X, tl.Position.Y);
-				_state.camera.toCameraScale(ref pos2);
+				camera.toCameraScale(ref pos2);
 				leftPressed = true;
 				mx = pos2.X;
 				my = pos2.Y;

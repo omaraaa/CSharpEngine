@@ -11,3 +11,4 @@
 	-need to implement serialization support for an entity
 	-so you could sync entities when created
 -Create GUI systems
+-Rework rendering

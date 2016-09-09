@@ -10,7 +10,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)CS\Basic.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)CS\ComponentSystem.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)CS\CoreSystem.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)CS\GUI.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)CS\Lua.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)CS\Networking.cs" />
@@ -25,6 +25,8 @@
     <Compile Include="$(MSBuildThisFileDirectory)Game1.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Game\Player.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)LD30\LD36Game.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Monogame\Camera.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Monogame\MonogameSystem.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="$(MSBuildThisFileDirectory)TODO.txt" />

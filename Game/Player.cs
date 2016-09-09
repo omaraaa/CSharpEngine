@@ -108,7 +108,6 @@ class Player
 		leg.OnSeparation += seperation;
 
 		isControllable = control;
-
 	}
 
 	public Player(World world, int b)
@@ -137,10 +136,10 @@ class Player
 	{
 		if (!b.IsSensor)
 		{
-			if (isTouching == 0)
-			{
-				LD36.LD36Game.PlaySound("landsound", 0.8f, -0.3f);
-			}
+			//if (isTouching == 0)
+			//{
+			//	LD36.LD36Game.PlaySound("landsound", 0.8f, -0.3f);
+			//}
 			isTouching++;
 		}
 		return true;
@@ -175,11 +174,12 @@ class PlayerSystem : ComponentSystem<Player>, ISysUpdateable
 				continue;
 
 			var player = components[i];
-			var keyState = G.keyboardState;
+			player.body.Mass = 1;
+			var keyState = G.getSystem<MG.MonogameSystem>().keyboardState;
 			var vel = player.body.LinearVelocity;
 			bool moving = false;
-			var speed = ConvertUnits.ToSimUnits(1030);
-			var maxVel = ConvertUnits.ToSimUnits(10);
+			var speed = ConvertUnits.ToSimUnits(3030);
+			var maxVel = ConvertUnits.ToSimUnits(100);
 			var spriteIndex = _state.getComponentIndex(entityIDs[i], spriteSys.systemIndex);
 			if (player.isControllable)
 			{
@@ -214,7 +214,7 @@ class PlayerSystem : ComponentSystem<Player>, ISysUpdateable
 					vel.Y = -ConvertUnits.ToSimUnits(420);
 					moving = true;
 					player.jumps++;
-					LD36.LD36Game.PlaySound("jumpsound");
+					//LD36.LD36Game.PlaySound("jumpsound");
 				}
 
 				if (keyState.IsKeyDown(Keys.Space) && vel.Y > 1f && (player.jumps < player.maxJumps || player.infinite))
@@ -222,10 +222,10 @@ class PlayerSystem : ComponentSystem<Player>, ISysUpdateable
 					vel.Y = -ConvertUnits.ToSimUnits(420);
 					moving = true;
 					player.jumps++;
-					if (player.infinite)
-						LD36.LD36Game.PlaySound("jumpsound", 1, 0);
-					else
-						LD36.LD36Game.PlaySound("jumpsound", 1, ((float)player.jumps) / (player.maxJumps + 1));
+					//if (player.infinite)
+						//LD36.LD36Game.PlaySound("jumpsound", 1, 0);
+					//else
+						//LD36.LD36Game.PlaySound("jumpsound", 1, ((float)player.jumps) / (player.maxJumps + 1));
 
 				}
 			}
@@ -243,12 +243,12 @@ class PlayerSystem : ComponentSystem<Player>, ISysUpdateable
 				{
 					if (vel.X > ConvertUnits.ToSimUnits(20f))
 					{
-						spriteSys.Play("move", entityIDs[i], 16, true);
+						spriteSys.Play("move", entityIDs[i], 0, true);
 						spr.flipH = false;
 					}
 					else if (vel.X < -ConvertUnits.ToSimUnits(20f))
 					{
-						spriteSys.Play("move", entityIDs[i], 16, true);
+						spriteSys.Play("move", entityIDs[i], 0, true);
 						spr.flipH = true;
 					}
 					else

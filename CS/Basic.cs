@@ -26,16 +26,10 @@ using MG;
 namespace CS.Components
 {
 	[MoonSharpUserData]
-	class Transform
+	struct Transform
 	{
 		public Vector2 position;
 		public Vector2 deltaPos;
-
-		public Transform()
-		{
-			position = new Vector2(0,0);
-			deltaPos = new Vector2(0,0);
-		}
 
 		public void SetPosition(Vector2 pos)
 		{
@@ -60,9 +54,11 @@ namespace CS.Components
 
 		void ISysUpdateable.Update(Global G)
 		{
-			foreach (Transform t in components)
+			for(int i = 0; i < size; ++i)
 			{
+				var t = components[i];
 				t.deltaPos = t.position;
+				components[i] = t;
 			}
 		}
 
@@ -166,6 +162,7 @@ namespace CS.Components
 				pos.Y = my;
 				camera.toCameraScale(ref pos);
 				transformC.position = pos;
+				transform.SetComponent(entity, transformC);
 			}
 		}
 
@@ -189,7 +186,7 @@ namespace CS.Components
 	{
 		int followID = -1;
 		TransformSystem transSys;
-		TextureSystem textureSystem;
+		RenderSystem renderSys;
 		Rectangle rect;
 
 		Camera camera;
@@ -197,7 +194,7 @@ namespace CS.Components
 		public CameraFollowSystem(State state) : base(state, "CameraFollowSystem")
 		{
 			transSys = state.getSystem<TransformSystem>();
-			textureSystem = state.getSystem<TextureSystem>();
+			renderSys = state.getSystem<RenderSystem>();
 			camera = state.getSystem<Camera>();
 			rect = new Rectangle(0, 0, 100, 100);
 		}
@@ -216,8 +213,8 @@ namespace CS.Components
 				{
 					var trans = transSys.getComponent(index);
 					var dist = Vector2.Distance(trans.position, trans.deltaPos)/ _state.G.dt;
-					var pos = trans.position + (trans.position - trans.deltaPos)/ _state.G.dt;
-					pos = Vector2.SmoothStep(camera.position, pos, 1 - (float)Math.Exp(-(10 + dist) * _state.G.dt));
+					var pos = trans.position;
+					pos = Vector2.SmoothStep(camera.position, pos, 1 - (float)Math.Exp(-10 * _state.G.dt));
 					camera.SetPosition(pos);
 				}
 			}
@@ -254,7 +251,7 @@ namespace CS.Components
 		bool mhold = false;
 		int heldEntity = -1;
 		Vector2 offset;
-		TextureSystem textureSys;
+		RenderSystem renderSys;
 		TransformSystem transfromSys;
 		PhysicsSystem physics;
 		Camera camera;
@@ -263,7 +260,7 @@ namespace CS.Components
 		public DragAndDropSystem(State state) : base(state, "DragAndDrop")
 		{
 			offset = new Vector2(0, 0);
-			textureSys = _state.getSystem<TextureSystem>();
+			renderSys = _state.getSystem<RenderSystem>();
 			transfromSys = _state.getSystem<TransformSystem>();
 			physics = _state.getSystem<PhysicsSystem>();
 			camera = state.getSystem<Camera>();
@@ -305,7 +302,7 @@ namespace CS.Components
 					var tIndex = _state.getComponentIndex(e, systemIndex);
 					if (tIndex != -1)
 					{
-						var rect = textureSys.getRect(e);
+						var rect = renderSys.getComponentByID(e).Bounds;
 						if (rect.Contains(mx, my))
 						{
 							mhold = true;
@@ -433,7 +430,7 @@ namespace CS.Components
 		}
 
 	}
-
+	/*
 	class colliderComponent
 	{
 		public int transformIndex;
@@ -477,7 +474,7 @@ namespace CS.Components
 			touchable = Direction.ALL;
 		}
 	}
-
+	
 	class CollisionSystem : ComponentSystem<colliderComponent>, ISysUpdateable
 	{
 		private TransformSystem transformSys;
@@ -666,7 +663,7 @@ namespace CS.Components
 		{
 			throw new NotImplementedException();
 		}
-	}
+	}*/
 
 	delegate void CallBack(State state, int id);
 	class Timer
@@ -910,7 +907,7 @@ namespace Entities
 		public Image(State state, String image, Vector2 position, Vector2 offset, float layer = 0.9f, bool topright = false)
 		{
 			var transformSys = state.getSystem<TransformSystem>();
-			var textureSys = state.getSystem<TextureSystem>();
+			var textureSys = state.getSystem<RenderSystem>();
 
 			id = state.CreateEntity();
 
@@ -923,7 +920,7 @@ namespace Entities
 
 			if(topright)
 			{
-				texture.offset -= new Vector2(texture.textureRect.Width / 2, texture.textureRect.Height / 2);
+				texture.offset += new Vector2(texture.textureRect.Width / 2, texture.textureRect.Height / 2);
 			}
 
 			textureIndex = textureSys.AddComponent(id, texture);

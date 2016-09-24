@@ -20,6 +20,7 @@ namespace MG
 		public MouseState mouseState;
 		public TouchCollection touchCollection;
 		public KeyboardState keyboardState;
+		public GamePadState gamepadState;
 
 		public bool IsMouseCaptured { get; set; }
 		private List<Keys> lastKeyboardState;
@@ -59,6 +60,7 @@ namespace MG
 			IsMouseCaptured = false;
 			mouseState = Mouse.GetState();
 			keyboardState = Keyboard.GetState();
+			gamepadState = GamePad.GetState(0);
 			var keys = keyboardState.GetPressedKeys();
 
 			foreach (Keys key in keys)

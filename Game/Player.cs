@@ -31,8 +31,8 @@ class Player
 	{
 		var transSys = state.getSystem<TransformSystem>();
 		var physics = state.getSystem<PhysicsSystem>();
-		var textureSys = state.getSystem<TextureSystem>();
-		var spriteSys = state.getSystem<SpriteSystem>();
+		var textureSys = state.getSystem<RenderSystem>();
+		var spriteSys = state.G.getSystem<SpriteSystem>();
 		var playerSys = state.getSystem<PlayerSystem>();
 		var cameraFollow = state.getSystem<CameraFollowSystem>();
 
@@ -46,11 +46,10 @@ class Player
 		transSys.AddComponent(id, trans);
 
 		Texture2 texture = new Texture2(state.G, "player", renderlayer);
-		textureSys.AddComponent(id, texture);
 
-		Sprite spr = new Sprite("player");
-		spriteSys.AddComponent(id, spr);
-		spriteSys.Play("idle", id, 16, true);
+		Sprite spr = new Sprite(spriteSys,texture);
+		spr.Play("idle", 16, true);
+		textureSys.AddComponent(id, spr);
 
 		Rectangle bounds = texture.textureRect;
 
@@ -136,10 +135,10 @@ class Player
 	{
 		if (!b.IsSensor)
 		{
-			//if (isTouching == 0)
-			//{
-			//	LD36.LD36Game.PlaySound("landsound", 0.8f, -0.3f);
-			//}
+			if (isTouching == 0)
+			{
+				LD36.LD36Game.PlaySound("landsound", 0.8f, -0.3f);
+			}
 			isTouching++;
 		}
 		return true;
@@ -154,11 +153,11 @@ class Player
 class PlayerSystem : ComponentSystem<Player>, ISysUpdateable
 {
 	PhysicsSystem physics;
-	SpriteSystem spriteSys;
+	RenderSystem renderSys;
 	public PlayerSystem(State state) : base(state, "Player")
 	{
 		physics = state.getSystem<PhysicsSystem>();
-		spriteSys = state.getSystem<SpriteSystem>();
+		renderSys = state.getSystem<RenderSystem>();
 	}
 
 	public override BaseSystem DeserializeConstructor(State state, string name)
@@ -176,28 +175,29 @@ class PlayerSystem : ComponentSystem<Player>, ISysUpdateable
 			var player = components[i];
 			player.body.Mass = 1;
 			var keyState = G.getSystem<MG.MonogameSystem>().keyboardState;
+			var gamepad = G.getSystem<MG.MonogameSystem>().gamepadState;
 			var vel = player.body.LinearVelocity;
 			bool moving = false;
 			var speed = ConvertUnits.ToSimUnits(3030);
 			var maxVel = ConvertUnits.ToSimUnits(100);
-			var spriteIndex = _state.getComponentIndex(entityIDs[i], spriteSys.systemIndex);
+			var spriteIndex = _state.getComponentIndex(entityIDs[i], renderSys.systemIndex);
 			if (player.isControllable)
 			{
-				if (keyState.IsKeyDown(Keys.A))
+				if (keyState.IsKeyDown(Keys.A) || gamepad.IsButtonDown(Buttons.DPadLeft))
 				{
 					if (spriteIndex != -1)
 					{
-						var spr = spriteSys.getComponent(spriteIndex);
+						var spr = (Sprite) renderSys.getComponent(spriteIndex);
 						spr.flipH = true;
 					}
 					player.body.ApplyForce(new Vector2(-speed, 0));
 					moving = true;
 				}
-				if (keyState.IsKeyDown(Keys.D))
+				if (keyState.IsKeyDown(Keys.D) || gamepad.IsButtonDown(Buttons.DPadRight))
 				{
 					if (spriteIndex != -1)
 					{
-						var spr = spriteSys.getComponent(spriteIndex);
+						var spr = (Sprite)renderSys.getComponent(spriteIndex);
 						spr.flipH = false;
 					}
 					player.body.ApplyForce(new Vector2(speed, 0));
@@ -207,58 +207,59 @@ class PlayerSystem : ComponentSystem<Player>, ISysUpdateable
 				if (player.isTouching > 0)
 				{
 					player.jumps = 0;
-				}
 
-				if (keyState.IsKeyDown(Keys.Space) && player.isTouching > 0)
+				}
+				var jumpkey = (keyState.IsKeyDown(Keys.Space) || gamepad.IsButtonDown(Buttons.A));
+				if (jumpkey  && player.isTouching > 0)
 				{
 					vel.Y = -ConvertUnits.ToSimUnits(420);
 					moving = true;
 					player.jumps++;
-					//LD36.LD36Game.PlaySound("jumpsound");
+					LD36.LD36Game.PlaySound("jumpsound");
 				}
 
-				if (keyState.IsKeyDown(Keys.Space) && vel.Y > 1f && (player.jumps < player.maxJumps || player.infinite))
+				if (jumpkey && vel.Y > 1f && (player.jumps < player.maxJumps || player.infinite))
 				{
 					vel.Y = -ConvertUnits.ToSimUnits(420);
 					moving = true;
 					player.jumps++;
-					//if (player.infinite)
-						//LD36.LD36Game.PlaySound("jumpsound", 1, 0);
-					//else
-						//LD36.LD36Game.PlaySound("jumpsound", 1, ((float)player.jumps) / (player.maxJumps + 1));
+					if (player.infinite)
+						LD36.LD36Game.PlaySound("jumpsound", 1, 0);
+					else
+						LD36.LD36Game.PlaySound("jumpsound", 1, ((float)player.jumps) / (player.maxJumps + 1));
 
 				}
 			}
 			if (spriteIndex != -1)
 			{
-				var spr = spriteSys.getComponent(spriteIndex);
+				var spr = (Sprite)renderSys.getComponent(spriteIndex);
 				if (player.isTouching == 0)
 				{
 					if (vel.Y < 0f)
-						spriteSys.Play("jumping", entityIDs[i], 30, false);
+						spr.Play("jumping", 30, false);
 					if (vel.Y > 1f)
-						spriteSys.Play("falling", entityIDs[i], 30, false);
+						spr.Play("falling", 30, false);
 				}
 				else
 				{
-					if (vel.X > ConvertUnits.ToSimUnits(20f))
+					if (vel.X > ConvertUnits.ToSimUnits(2f))
 					{
-						spriteSys.Play("move", entityIDs[i], 0, true);
+						spr.Play("move", 8*Math.Abs((int)ConvertUnits.ToDisplayUnits(vel.X)/50), true);
 						spr.flipH = false;
 					}
-					else if (vel.X < -ConvertUnits.ToSimUnits(20f))
+					else if (vel.X < -ConvertUnits.ToSimUnits(2f))
 					{
-						spriteSys.Play("move", entityIDs[i], 0, true);
+						spr.Play("move", 8 * Math.Abs((int)ConvertUnits.ToDisplayUnits(vel.X)/50), true);
 						spr.flipH = true;
 					}
 					else
 					{
 						//spriteSys.Play("jumping", entityIDs[i], 30, false);
-						spriteSys.Play("idle", entityIDs[i], 8, true);
+						spr.Play("idle", 8, true);
 					}
 				}
 
-
+				renderSys.SetComponent(entityIDs[i], spr);
 			}
 
 			if (Math.Abs(vel.X) > maxVel)

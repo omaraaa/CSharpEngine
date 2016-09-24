@@ -35,8 +35,8 @@ namespace Util
 
 			var transSys = state.getSystem<TransformSystem>();
 			var physicsSys = state.getSystem<PhysicsSystem>();
-			var textureSys = state.getSystem<TextureSystem>();
-			var spriteSys = state.getSystem<SpriteSystem>();
+			var textureSys = state.getSystem<RenderSystem>();
+			var spriteSys = state.G.getSystem<SpriteSystem>();
 
 			var registy = G.getSystem < RegistrySystem<TiledObjectContructor>>();
 
@@ -110,13 +110,12 @@ namespace Util
 						}
 
 						Texture2 texture = new Texture2(state.G, tileinfo.name, renderLayer);
-						textureSys.AddComponent(e, texture);
 						//texture.setRect(tw, th);
 
 
-						Sprite spr = new Sprite(tileinfo.name);
-						spriteSys.AddComponent(e, spr);
-						spriteSys.SetFrame(e, spriteIndex);
+						Sprite spr = new Sprite(spriteSys, texture);
+						spr.SetFrame(spriteIndex);
+						textureSys.AddComponent(e, spr);
 					}
 				}
 				else if (type == "objectgroup")

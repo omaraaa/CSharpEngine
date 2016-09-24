@@ -11,4 +11,9 @@
 	-need to implement serialization support for an entity
 	-so you could sync entities when created
 -Create GUI systems
--Rework rendering
+-Rework rendering DONE
+	* Now there is one render system that can render both textures, text, and sprites
+	* this solves the problem of one entity needing to render two textures or a texture and a string etc,etc..
+-Implement non-spritebatch renderering
+
+-seperate component system into data system and entity system

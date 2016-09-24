@@ -40,21 +40,73 @@ namespace CS.Components
 	/*
 	 * The sprite class takes a texture and changes it's source rectangle to match specific animation frame
 	*/
-	class Sprite
+	struct Sprite : IRender
 	{
-		public String textureName;
+		public Texture2 texture;
+		private SpriteSystem spriteSystem;
 		public Queue<Animation> queuedAnimations;
 		public Animation currentAnimation;
-		public bool flipH = false;
+		public bool flipH ;
 		float count;
-		public Sprite(String textureName)
+
+		public string Type
 		{
-			this.textureName = textureName;
-			count = 0;
-			queuedAnimations = new Queue<Animation>();
+			get
+			{
+				return "Sprite";
+			}
 		}
 
-		public void Update(Global G)
+		public Vector2 Position
+		{
+			get
+			{
+				return ((IRender)texture).Position;
+			}
+
+			set
+			{
+				((IRender)texture).Position = value;
+			}
+		}
+
+		public float Rotation
+		{
+			get
+			{
+				return ((IRender)texture).Rotation;
+			}
+
+			set
+			{
+				((IRender)texture).Rotation = value;
+			}
+		}
+
+		public Rectangle Bounds
+		{
+			get
+			{
+				return ((IRender)texture).Bounds;
+			}
+
+			set
+			{
+				((IRender)texture).Bounds = value;
+			}
+		}
+
+		public Sprite(SpriteSystem s, Texture2 tex)
+		{
+			texture = tex;
+			count = 0;
+			queuedAnimations = new Queue<Animation>();
+			flipH = false;
+			currentAnimation = new Animation();
+			spriteSystem = s;
+		}
+
+		public void UpdateAnimation(Global G)
 		{
 			//Animation Step
 			if(currentAnimation.active)
@@ -78,106 +130,122 @@ namespace CS.Components
 			}
 		}
 
+		public void Render(SpriteBatch batch)
+		{
+			((IRender)texture).Render(batch);
+		}
+
+		public void Serialize(State state, BinaryWriter writer)
+		{
+			writer.Write(texture.Type);
+			((IRender)texture).Serialize(state, writer);
+
+			writer.Write(currentAnimation.active);
+			writer.Write(currentAnimation.name);
+			writer.Write(currentAnimation.index);
+			writer.Write(currentAnimation.repeat);
+			writer.Write(currentAnimation.fps);
+		}
+
+		public IRender DeserializeConstructor(State state, BinaryReader reader)
+		{
+			var desreg = state.G.getSystem<RegistrySystem<RenderDeserializer>>();
+			var spriteSys = state.G.getSystem<SpriteSystem>();
+
+
+			var type = reader.ReadString();
+			var texture = (Texture2) desreg.Get(type)(state, reader);
+			Sprite spr = new Sprite(spriteSys, texture);
+			var active = reader.ReadBoolean();
+			var name = reader.ReadString();
+			var index = reader.ReadInt32();
+			var repeat = reader.ReadBoolean();
+			var fps = reader.ReadSingle();
+
+			spr.currentAnimation = spriteSys.animations[name];
+			spr.currentAnimation.active = active;
+			spr.currentAnimation.index = index;
+			spr.currentAnimation.repeat = repeat;
+			spr.currentAnimation.fps = fps;
+
+			return spr;
+		}
+
+		public void Update(State state)
+		{
+
+			((IRender)texture).Update(state);
+
+			if (!currentAnimation.active)
+				return;
+
+			var index = currentAnimation.index;
+			texture.srcRect = spriteSystem.frames[texture.textureName][currentAnimation.frames[index]];
+			texture.resetRect();
+			texture.effect = flipH ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
+
+			UpdateAnimation(state.G);
+		}
+
+		public void Play(String name, int fps, bool repeat)
+		{
+			if (currentAnimation.name != name)
+			{
+				currentAnimation = spriteSystem.animations[name];
+				currentAnimation.fps = fps;
+				currentAnimation.repeat = repeat;
+
+
+				texture.srcRect = spriteSystem.frames[texture.textureName][currentAnimation.frames[0]];
+				texture.resetRect();
+				texture.effect = flipH ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
+			}
+			else
+			{
+				currentAnimation.fps = fps;
+				currentAnimation.repeat = repeat;
+			}
+		}
+
+		public void SetFrame(int frameIndex)
+		{
+
+			currentAnimation.name = "";
+			currentAnimation.fps = 1;
+			currentAnimation.repeat = true;
+			currentAnimation.index = 0;
+			currentAnimation.frames = new int[] { frameIndex };
+			currentAnimation.active = true;
+			currentAnimation.frameLength = 1;
+
+			texture.srcRect = spriteSystem.frames[texture.textureName][currentAnimation.frames[0]];
+			texture.resetRect();
+			texture.effect = flipH ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
+
+		}
 	}
 
 	/*
 	 * The sprite system holds animation data for each texture that the sprite class uses
 	*/
-	class SpriteSystem : ComponentSystem<Sprite>, ISysUpdateable
+	class SpriteSystem : BaseSystem
 	{
-		TextureSystem textureSys;
+		RenderSystem renderSys;
 		//Frames of each texture
-		Dictionary<String, Rectangle[]> frames;
+		public Dictionary<String, Rectangle[]> frames;
 		//Animations: Contians indexes for each frame of animation
-		Dictionary<String, Animation> animations;
+		public Dictionary<String, Animation> animations;
 
-		public SpriteSystem(State state) : base(state, "SpriteSystem")
+		public SpriteSystem(Global state) : base(state, "SpriteSystem")
 		{
-			textureSys = state.getSystem<TextureSystem>();
 			frames = new Dictionary<string, Rectangle[]>();
 			animations = new Dictionary<string, Animation>();
+			renderSys = state.getSystem<RenderSystem>();
 		}
 
 		public override BaseSystem DeserializeConstructor(State state, string name)
 		{
-			return new SpriteSystem(state);
-		}
-
-		public void Update(Global G)
-		{
-			
-			for(int i = 0; i < size; ++i)
-			{
-				if (entityIDs[i] == -1)
-					continue;
-				if (!components[i].currentAnimation.active)
-					continue;
-
-				int textureIndex = -1;
-				if(textureSys.ContainsEntity(entityIDs[i], ref textureIndex))
-				{
-					var tex = textureSys.getComponent(textureIndex);
-					var texName = components[i].textureName;
-					var index = components[i].currentAnimation.index;
-					tex.srcRect = frames[texName][components[i].currentAnimation.frames[index]];
-					tex.resetRect();
-					tex.effect = components[i].flipH ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
-				}
-
-				components[i].Update(G);
-			}
-		}
-
-		public void Play(String name, int eID, int fps, bool repeat)
-		{
-			var index = _state.getComponentIndex(eID, systemIndex);
-			if (index == -1)
-				return;
-
-			if (components[index].currentAnimation.name != name)
-			{
-				components[index].currentAnimation = animations[name];
-				components[index].currentAnimation.fps = fps;
-				components[index].currentAnimation.repeat = repeat;
-
-				int textureIndex = -1;
-				if (textureSys.ContainsEntity(eID, ref textureIndex))
-				{
-					var tex = textureSys.getComponent(textureIndex);
-					var texName = components[index].textureName;
-
-					tex.srcRect = frames[texName][components[index].currentAnimation.frames[0]];
-					tex.resetRect();
-					tex.effect = components[index].flipH ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
-				}
-			}
-		}
-
-		public void SetFrame(int eID, int frameIndex)
-		{
-			var index = _state.getComponentIndex(eID, systemIndex);
-			if (index == -1)
-				return;
-
-			components[index].currentAnimation.name = "";
-			components[index].currentAnimation.fps = 1;
-			components[index].currentAnimation.repeat = true;
-			components[index].currentAnimation.index = 0;
-			components[index].currentAnimation.frames = new int[] { frameIndex };
-			components[index].currentAnimation.active = true;
-			components[index].currentAnimation.frameLength = 1;
-
-			int textureIndex = -1;
-			if (textureSys.ContainsEntity(eID, ref textureIndex))
-			{
-				var tex = textureSys.getComponent(textureIndex);
-				var texName = components[index].textureName;
-
-				tex.srcRect = frames[texName][components[index].currentAnimation.frames[0]];
-				tex.resetRect();
-				tex.effect = components[index].flipH ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
-			}
-
+			return new SpriteSystem((Global) state);
 		}
 
 		public void AddAnimation(Animation animation)
@@ -285,36 +353,6 @@ namespace CS.Components
 					i++;
 				}
 			}
-		}
-
-
-		protected override void SerailizeComponent(ref Sprite component, BinaryWriter writer)
-		{
-			writer.Write(component.textureName);
-			writer.Write(component.currentAnimation.active);
-			writer.Write(component.currentAnimation.name);
-			writer.Write(component.currentAnimation.index);
-			writer.Write(component.currentAnimation.repeat);
-			writer.Write(component.currentAnimation.fps);
-		}
-
-		protected override Sprite DeserailizeComponent(BinaryReader reader)
-		{
-			string textureName = reader.ReadString();
-			Sprite spr = new Sprite(textureName);
-			var active = reader.ReadBoolean();
-			var name = reader.ReadString();
-			var index = reader.ReadInt32();
-			var repeat = reader.ReadBoolean();
-			var fps = reader.ReadSingle();
-
-			spr.currentAnimation = animations[name];
-			spr.currentAnimation.active = active;
-			spr.currentAnimation.index = index;
-			spr.currentAnimation.repeat = repeat;
-			spr.currentAnimation.fps = fps;
-
-			return spr;
 		}
 
 		public override void SerializeSystem(BinaryWriter writer)

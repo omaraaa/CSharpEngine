@@ -9,7 +9,7 @@ using System.Diagnostics;
 namespace CS
 {
 
-	abstract class BaseSystem
+	public abstract class BaseSystem
 	{
 		
 		public State _state;
@@ -53,9 +53,9 @@ namespace CS
 		abstract public BaseSystem DeserializeConstructor(State state, string name);
 	}
 
-	
 
-	abstract class EntitySystem : BaseSystem
+
+	public abstract class EntitySystem : BaseSystem
 	{
 		protected int[] entityIDs;
 		protected int[] freeIndexes;
@@ -180,7 +180,7 @@ namespace CS
 	/*
 	 * System that manages the storage and update of differening components
 	 */
-	abstract class ComponentSystem<T> : EntitySystem
+	public abstract class ComponentSystem<T> : EntitySystem
 	{
 		protected T[] components;
 		protected uint index;
@@ -277,11 +277,152 @@ namespace CS
 		}
 	}
 
-	
 
+	public abstract class Data<T> : BaseSystem
+	{
+		protected T[] data;
+		protected int[] freeIndexes;
+		protected uint index;
+		protected int size;
+		protected uint cachedComponent;
 
+		public Data(State state, String name) : base(state, name)
+		{
+			data = new T[0];
+			freeIndexes = new int[0];
+			size = 0;
+			index = 0;
+			cachedComponent = 0;
+		}
 
-	class State
+		virtual public int AddData(T component)
+		{
+			if (freeIndexes.Length == 0)
+			{
+				size++;
+				Array.Resize(ref data, size);
+				data[size - 1] = component;
+
+				return size - 1;
+			}
+			else
+			{
+				var index = freeIndexes[freeIndexes.Length - 1];
+				data[index] = component;
+
+				Array.Resize(ref freeIndexes, freeIndexes.Length - 1);
+
+				return index;
+			}
+		}
+
+		public T this[int key]
+		{
+			get
+			{
+				return data[key];
+			}
+			set
+			{
+				data[key] = value;
+			}
+		}
+
+		public override void Serialize(BinaryWriter writer)
+		{
+			base.Serialize(writer);
+			for (int i = 0; i < size; ++i)
+			{
+				SerailizeData(ref data[i], writer);
+			}
+			postSerialization(writer);
+		}
+
+		override public void Deserialize(BinaryReader reader)
+		{
+			base.Deserialize(reader);
+			data = new T[size];
+			for (int i = 0; i < size; ++i)
+			{
+				data[i] = DeserailizeData(reader);
+			}
+			postDeserialization(reader);
+		}
+
+		protected abstract void SerailizeData(ref T component, BinaryWriter writer);
+		public void SerializeData(int index, BinaryWriter writer)
+		{
+			SerailizeData(ref data[index], writer);
+		}
+
+		protected abstract T DeserailizeData(BinaryReader reader);
+		public void DeserializeData(int index, BinaryReader reader)
+		{
+			T component = DeserailizeData(reader);
+			if (index >= size)
+			{
+				AddData(component);
+			}
+			else
+			{
+				data[index] = component;
+			}
+		}
+
+		virtual protected void postSerialization(BinaryWriter writer) { }
+		virtual protected void postDeserialization(BinaryReader reader) { }
+	}
+	public class EntityManager : BaseSystem
+	{
+		//entities[0][0,0] means entity 0 data 0 index 0
+		int[][] entities;
+		private int[] removedEntities;
+		private Stack<int> toRemoveEntities;
+		public Queue<int> addedEntities;
+
+		public EntityManager(State state, string name) : base(state, name)
+		{
+		}
+
+		public override BaseSystem DeserializeConstructor(State state, string name)
+		{
+			throw new NotImplementedException();
+		}
+
+		public override void DeserializeSystem(BinaryReader reader)
+		{
+			throw new NotImplementedException();
+		}
+
+		public override void SerializeSystem(BinaryWriter writer)
+		{
+			throw new NotImplementedException();
+		}
+
+		public int CreateEntity()
+		{
+			int index = 0;
+			if (removedEntities.Length != 0)
+			{
+				index = removedEntities[removedEntities.Length - 1];
+				Array.Resize(ref removedEntities, removedEntities.Length - 1);
+			}
+			else
+			{
+				Array.Resize(ref entities, entities.Length + 1);
+				index = entities.Length - 1;
+			}
+			entities[index] = new int[entities.Length];
+			for (int i = 0; i < entities.Length; ++i)
+			{
+				entities[index][i] = -1;
+			}
+			addedEntities.Enqueue(index);
+			return index;
+		}
+	}
+
+	public class State
 	{
 		private BaseSystem[] systems;
 		private uint[] updatableIndexes;
@@ -453,6 +594,11 @@ namespace CS
 			return null;
 		}
 
+		public BaseSystem getSystem(uint index)
+		{
+			return systems[index];
+		}
+
 		protected State(SerializationInfo info, StreamingContext context)
 		{
 			renderableIndexes = (uint[]) info.GetValue("renderIndexes", typeof(uint[]));
@@ -566,11 +712,11 @@ namespace CS
 
 	delegate void FunctionDelegate(ref State state, uint id);
 
-	delegate BaseSystem DeserializationConstructor(State state, string name);
+	public delegate BaseSystem DeserializationConstructor(State state, string name);
 
 
 	[Serializable()]
-	class Global : State
+	public class Global : State
 	{
 		private State[] activeStates;
 		public float dt;
@@ -591,7 +737,8 @@ namespace CS
 
 			foreach (State s in activeStates)
 			{
-				s.Update();
+				if (s != null)
+					s.Update();
 			}
 		}
 
@@ -600,7 +747,8 @@ namespace CS
 
 			foreach (State s in activeStates)
 			{
-				s.Render();
+				if(s != null)
+					s.Render();
 			}
 			base.Render();
 		}

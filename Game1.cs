@@ -41,12 +41,12 @@ namespace TankComProject
 		SpriteFont font;
 		Global G;
 		State state;
+		State guiState;
 		DebugGraph fpsGraph;
 		TransformSystem transSys;
-		TextureSystem textureSys;
 		MouseFollowSystem mousesys;
 		DragAndDropSystem ddSys;
-		CollisionSystem collSys;
+		RenderSystem renderSys;
 		PhysicsSystem physics;
 		CameraFollowSystem cameraFollow;
 		SpriteSystem sprSys;
@@ -82,6 +82,14 @@ namespace TankComProject
 			Content.RootDirectory = "Content";
 			//TargetElapsedTime = new System.TimeSpan(0, 0, 0, 0, 33/2);
 			//IsFixedTimeStep = false;
+		}
+
+		public void Start(State s, int id)
+		{
+			var G = s.G;
+			G.deactivateState(s.index);
+			G.ActivateState(state);
+			guiState = null;
 		}
 
 		/// <summary>
@@ -120,21 +128,19 @@ namespace TankComProject
 			G = new Global();
 			var monogame = new MG.MonogameSystem(G);
 			monogame.Game = this;
-			var renderer = new Renderer(G);
 			var camerag = new Camera(G);
+			sprSys = new SpriteSystem(G);
 			var msgSys = new MessageSystem(G);
 			var GLuaSys = new GlobalLuaSystem(G);
 			var fontSys = new FontSystem(G);
 			var callbackRegistry = new RegistrySystem<CallBack>(G, "CallBackRegistry");
 			callbackRegistry.Register("KillEntity", TimerSystem.KillEntity);
-			callbackRegistry.Register("Start", TimerSystem.KillEntity);
+			callbackRegistry.Register("Start", Start);
 
 			state = new State(G);
 			var camera = new Camera(state);
-			var layer = new Layer();
-			layer.camera = camera;
-			renderer.AddLayer(0, layer);
-			State guiState = new State(G);
+			
+			guiState = new State(G);
 			var camera2 = new Camera(guiState);
 
 #if ANDROID
@@ -147,10 +153,8 @@ namespace TankComProject
 			transSys = new TransformSystem(state);
 			
 			physics = new PhysicsSystem(state);
-			var textSys = new TextRenderingSystem(state);
-			textureSys = new TextureSystem(state);
+			renderSys = new RenderSystem(state);
 			cameraFollow = new CameraFollowSystem(state);
-			sprSys = new SpriteSystem(state);
 			mousesys = new MouseFollowSystem(state);
 			ddSys = new DragAndDropSystem(state);
 			playerSys = new PlayerSystem(state);
@@ -159,12 +163,13 @@ namespace TankComProject
 			GLuaSys.luaScript.Call(gridfunc, state);
 
 			TransformSystem transSys2 = new TransformSystem(guiState);
+			TransformSystem transSysG = new TransformSystem(G);
 			//PhysicsSystem physics2 = new PhysicsSystem(guiState);
-			var textSys2 = new TextRenderingSystem(guiState);
-			TextureSystem textureSys2 = new TextureSystem(guiState);
+			var renderSys2 = new RenderSystem(guiState);
+			var renderer2 = new RenderSystem(G);
 			//CameraFollowSystem cameraFollow2 = new CameraFollowSystem(guiState);
-			SpriteSystem sprSys2 = new SpriteSystem(guiState);
-			MouseFollowSystem mousesys2 = new MouseFollowSystem(guiState);
+			//SpriteSystem sprSys2 = new SpriteSystem(guiState);
+			MouseFollowSystem mousesys2 = new MouseFollowSystem(G);
 			DragAndDropSystem ddSys2 = new DragAndDropSystem(guiState);
 			TimerSystem timerSys = new TimerSystem(guiState);
 			GUISystem guiSys2 = new GUISystem(guiState);
@@ -177,7 +182,7 @@ namespace TankComProject
 			//sprSys.CreateGridFrames("player", 30, 27);
 			{
 				sprSys.loadJSON("Content/player.json", "player");
-				sprSys2.loadJSON("Content/button.json", "button");
+				sprSys.loadJSON("Content/button.json", "button");
 			}
 
 			//state.RegisterSystem(transSys);
@@ -185,24 +190,25 @@ namespace TankComProject
 
 
 			{
-				Image img = new Image(guiState, "cursor", Vector2.Zero, new Vector2(9, 9), 0.1f);
+				Image img = new Image(G, "cursor", Vector2.Zero, new Vector2(0, 0), 0.1f, true);
 				mousesys2.AddEntity(img.id);
 			}
 			{
-				for(int i = 0; i < 4; ++i)
+				for(int i = 0; i < 10000; ++i)
 				{
-					Text textObj = new Text();
+					var textObj = new Text();
 					textObj.Color = Color.White;
 					textObj.SetFont(fontSys, "font");
 					textObj.String = "Start";
 					textObj.Alignment = Align.CENTER;
-					var id = GUISystem.CreateButton(guiState, textObj, "button", new Rectangle(100*i, 400, 600 / 2, 200 / 2), "KillEntity", 0.5f);
+					var id = GUISystem.CreateButton(guiState, textObj, "button", new Rectangle(100 * i + 100, 400, 100, 50), "Start", 0.5f);
 				}
 				/*GUISystem.CreateButton(guiState, textObj, "button", new Rectangle(100, 200, 600, 200), "KillEntity", 0.5f);
 				GUISystem.CreateButton(guiState, textObj, "button", new Rectangle(0, 0, 600, 200), "KillEntity", 0.5f);
 				GUISystem.CreateButton(guiState, textObj, "button", new Rectangle(600, 200, 600, 200), "KillEntity", 0.5f);
 				GUISystem.CreateButton(guiState, textObj, "button", new Rectangle(400, 200, 600, 200), "KillEntity", 0.5f);*/
 			}
+
 			/*
 			var thickness = 32;
 			{
@@ -272,9 +278,9 @@ namespace TankComProject
 				physics.AddComponent(e, p);
 			}*/
 
-			G.ActivateState(state);
+			//G.ActivateState(state);
 			G.ActivateState(guiState);
-
+		
 			base.Initialize();
 		}
 
@@ -314,6 +320,7 @@ namespace TankComProject
 		/// <param name="gameTime">Provides a snapshot of timing values.</param>
 		protected override void Update(GameTime gameTime)
 		{
+			GC.AddMemoryPressure(20000);
 			if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
 			{
 				if (peer.ServerConnection != null)
@@ -349,10 +356,9 @@ namespace TankComProject
 							Image img2 = new Image(state, "player", new Vector2(100, 100), Vector2.Zero);
 							var id = img2.id;
 							ddSys.AddEntity(id);
-							var textC = textureSys.getComponent(img2.textureIndex);
-							var sprite = new Sprite("player");
-							sprSys.AddComponent(id, sprite);
-							sprSys.Play("idle", id, 1, true);
+							var textC = (Texture2) renderSys.getComponent(img2.textureIndex);
+							var sprite = new Sprite(sprSys, textC);
+							sprite.Play("idle", 1, true);
 							textC.setScale(2, 2);
 							var player = new Player(id, physics, textC.textureRect, false);
 							playerSys.AddComponent(id, player);
@@ -485,10 +491,9 @@ namespace TankComProject
 							Image img2 = new Image(state, "player", new Vector2(100, 100), Vector2.Zero);
 							var id = img2.id;
 							ddSys.AddEntity(id);
-							var textC = textureSys.getComponent(img2.textureIndex);
-							var sprite = new Sprite("player");
-							sprSys.AddComponent(id, sprite);
-							sprSys.Play("idle", id, 1, true);
+							var textC = (Texture2) renderSys.getComponent(img2.textureIndex);
+							var sprite = new Sprite(sprSys, textC);
+							sprite.Play("idle", 1, true);
 							textC.setRect(100, 100);
 							var player = new Player(id, physics, textC.textureRect, false);
 							playerSys.AddComponent(id, player);

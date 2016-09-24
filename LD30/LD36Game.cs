@@ -28,12 +28,12 @@ namespace LD36
 		State gameState;
 		GraphicsDeviceManager graphics;
 		static public Queue<string> greeting = new Queue<string>();
-		TextRenderingSystem textrender;
 		Timer ti;
 		public static Dictionary<string, SoundEffectInstance> soundeffects = new Dictionary<string, SoundEffectInstance>();
 		public static ContentManager content;
 		public static bool tutorial = false;
 		List<SoundEffect> sndfxs;
+		RenderSystem renderSys;
 
 		public static void PlaySound(string name, float vol = 1f, float pitch = 0f, float pan = 0f)
 		{
@@ -61,7 +61,7 @@ namespace LD36
 
 		public void nextDialog(State state, int id)
 		{
-			var text = textrender.getComponentByID(id);
+			var text = (Text) renderSys.getComponentByID(id);
 			if (greeting.Count > 0)
 			{
 				ti.target = 2;
@@ -79,7 +79,7 @@ namespace LD36
 				ti.target = 0.1f;
 				text.String = "";
 			}
-			textrender.SetComponent(id, text);
+			renderSys.SetComponent(id, text);
 		}
 
 		public void loadGameState()
@@ -101,17 +101,15 @@ namespace LD36
 			soundeffects["jumpsound"] = jumpsound.CreateInstance();
 			soundeffects["landsound"] = landsound.CreateInstance();
 			soundeffects["powerupsound"] = powerupsound.CreateInstance();
-			Renderer renderer;
 			G = new Global();
 			{
 				var monogame = new MG.MonogameSystem(G);
 				monogame.Game = this;
-				renderer = new Renderer(G);
 				var camera = new MG.Camera(G);
+				var spriteSys = new SpriteSystem(G);
 				var fontsys = new FontSystem(G);
 				var transSys = new TransformSystem(G);
-				var textureSys = new TextureSystem(G);
-				textrender = new TextRenderingSystem(G);
+				renderSys = new RenderSystem(G);
 				var mouseFollow = new MouseFollowSystem(G);
 				var luaSys = new GlobalLuaSystem(G);
 				var tiledObjRegist = new RegistrySystem<TiledObjectContructor>(G, "TiledObjectContructor");
@@ -122,6 +120,8 @@ namespace LD36
 				tiledObjRegist.Register("checkpoint", ObjectsGenerator.CreateCheckPoint);
 				tiledObjRegist.Register("infinite", ObjectsGenerator.CreateInfinitePowerUp);
 
+				spriteSys.loadJSON("Content/player.json", "player");
+
 				greeting.Enqueue("Hello");
 				greeting.Enqueue("Collect all ancient technologies");
 				greeting.Enqueue("");
@@ -129,7 +129,7 @@ namespace LD36
 				var greet = G.CreateEntity();
 				fontsys.LoadFont("font");
 				Text t = new Text(greeting.Dequeue(), center, fontsys, "font");
-				textrender.AddComponent(greet, t);
+				renderSys.AddComponent(greet, t);
 				TimerSystem.callbacks["nextDialog"] = nextDialog;
 
 				ti = new Timer(2, true, "nextDialog");
@@ -147,15 +147,10 @@ namespace LD36
 				var transSys = new TransformSystem(gameState);
 				var cameraFollow = new CameraFollowSystem(gameState);
 				var physics = new PhysicsSystem(gameState);
-				var textureSys = new TextureSystem(gameState);
-				var spriteSys = new SpriteSystem(gameState);
+				var render = new RenderSystem(gameState);
 				var playerSys = new PlayerSystem(gameState);
-				var layer = new Layer();
-				layer.camera = camera;
-				renderer.AddLayer(0, layer);
 				gameState.getSystem<MG.Camera>().setScale(new Vector2(2, 2));
 
-				spriteSys.loadJSON("Content/player.json", "player");
 				TiledLoader.LoadTiledLua(gameState, "tilemap.lua");
 			}
 
@@ -279,7 +274,7 @@ namespace LD36
 			var h = (float)obj.Get("height").Number;
 
 			var transformSys = state.getSystem<TransformSystem>();
-			var textureSys = state.getSystem<TextureSystem>();
+			var textureSys = state.getSystem<RenderSystem>();
 
 			var id = state.CreateEntity();
 

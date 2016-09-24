@@ -64,11 +64,11 @@ namespace CS.Components
 		{
 			var G = state.G;
 			transformSys = state.getSystem<TransformSystem>();
-			ConvertUnits.SetDisplayUnitToSimUnitRatio(64);
+			ConvertUnits.SetDisplayUnitToSimUnitRatio(8);
 			world = new World(new Vector2(0, ConvertUnits.ToSimUnits(2000)));
 			//Settings.ContinuousPhysics = false;
-			Settings.VelocityIterations = 1;
-			Settings.PositionIterations = 1;
+			//Settings.VelocityIterations = 1;
+			//Settings.PositionIterations = 1;
 			//Settings.DefaultFixtureIgnoreCCDWith = Category.All;
 #if DEBUG
 			debugView = new DebugViewXNA(world);
@@ -144,11 +144,15 @@ namespace CS.Components
 				if (index != -1)
 				{
 					var trans = transformSys.getComponent(index);
-					trans.position = 
-						ConvertUnits.ToDisplayUnits(components[i].Position);
+					var pos = ConvertUnits.ToDisplayUnits(components[i].Position);
+					trans.position = //trans.position + ConvertUnits.ToDisplayUnits(components[i].LinearVelocity * G.dt);
+									 ConvertUnits.ToDisplayUnits(components[i].Position);
+						//Vector2.SmoothStep(pos, trans.position, 1 - (float)Math.Exp(-1 * _state.G.dt));
+
+					transformSys.SetComponent(entityIDs[i], trans);
 				}
 
-				}
+			}
 		}
 
 		public override BaseSystem DeserializeConstructor(State state, string name)

@@ -80,7 +80,7 @@ namespace CS.Components
 			UserData.RegisterType<FarseerPhysics.Dynamics.Body>();
 			UserData.RegisterType<TransformSystem>();
 			UserData.RegisterType<PhysicsSystem>();
-			UserData.RegisterType<TextureSystem>();
+			UserData.RegisterType<RenderSystem>();
 			UserData.RegisterType<Camera>();
 
 

@@ -14,7 +14,7 @@ namespace MG
 			get
 			{
 				return
-				Matrix.CreateTranslation(new Vector3(-position.ToPoint().ToVector2(), 0))
+				Matrix.CreateTranslation(new Vector3(-position, 0))
 				* Matrix.CreateScale(new Vector3(scale, 0))
 				* Matrix.CreateTranslation(new Vector3(rect.Width / 2f, rect.Height / 2f, 0))
 				;

@@ -14,20 +14,15 @@ namespace CS
 		
 		public State _state;
 
-		public uint systemIndex;
+		public uint Index { get; private set; }
 		public int updateIndex = -1;
 		public int renderIndex = -1;
 		public String name;
 
-		static public int Order()
-		{
-			return 0;
-		}
-
 		public BaseSystem(State state, String name)
 		{
 			_state = state;
-			systemIndex = state.RegisterSystem(this);
+			Index = state.RegisterSystem(this);
 			this.name = name;
 			state.G.RegisterSystemSerialization(name, DeserializeConstructor);
 		}
@@ -72,7 +67,7 @@ namespace CS
 
 		virtual public int AddEntity(int id)
 		{
-			var cindex = _state.getComponentIndex(id, systemIndex);
+			var cindex = _state.getComponentIndex(id, Index);
 			if (cindex != -1 && cindex < size)
 			{
 				entityIDs[cindex] = id;
@@ -83,7 +78,7 @@ namespace CS
 				Array.Resize(ref entityIDs, size);
 				entityIDs[size - 1] = id;
 
-				_state.AddComponent(id, systemIndex, size - 1);
+				_state.AddComponent(id, Index, size - 1);
 				return size - 1;
 			}
 			else
@@ -91,7 +86,7 @@ namespace CS
 				var index = freeIndexes[freeIndexes.Length - 1];
 
 				entityIDs[index] = id;
-				_state.AddComponent(id, systemIndex, index);
+				_state.AddComponent(id, Index, index);
 
 				Array.Resize(ref freeIndexes, freeIndexes.Length - 1);
 
@@ -101,7 +96,7 @@ namespace CS
 
 		virtual public void RemoveEntity(int id)
 		{
-			var index = _state.getComponentIndex(id, systemIndex);
+			var index = _state.getComponentIndex(id, Index);
 			if (index == -1)
 				return;
 
@@ -109,12 +104,12 @@ namespace CS
 
 			Array.Resize(ref freeIndexes, freeIndexes.Length + 1);
 			freeIndexes[freeIndexes.Length - 1] = index;
-			_state.RemoveComponent(id, systemIndex);
+			_state.RemoveComponent(id, Index);
 		}
 
 		public bool ContainsEntity(int id, ref int index)
 		{
-			var indx = _state.getComponentIndex(id, systemIndex);
+			var indx = _state.getComponentIndex(id, Index);
 			index = indx;
 			if (indx != -1)
 				return true;
@@ -206,7 +201,7 @@ namespace CS
 
 		virtual public void SetComponent(int id, T component)
 		{
-			var index = _state.getComponentIndex(id, systemIndex);
+			var index = _state.getComponentIndex(id, Index);
 			if (index < size)
 				components[index] = component;
 		}
@@ -218,7 +213,7 @@ namespace CS
 
 		public T getComponentByID(int id)
 		{
-			var index = _state.getComponentIndex(id, systemIndex);
+			var index = _state.getComponentIndex(id, Index);
 
 			return components[index];
 		}

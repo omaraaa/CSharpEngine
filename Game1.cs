@@ -390,8 +390,8 @@ namespace TankComProject
 							var x = message.ReadSingle();
 							var y = message.ReadSingle();
 
-							var ti = state.getComponentIndex(id, transSys.systemIndex);
-							var pi = state.getComponentIndex(id, physics.systemIndex);
+							var ti = state.getComponentIndex(id, transSys.Index);
+							var pi = state.getComponentIndex(id, physics.Index);
 							if (ti != -1)
 							{
 								var t = new Vector2();
@@ -531,8 +531,8 @@ namespace TankComProject
 							var x = message.ReadSingle();
 							var y = message.ReadSingle();
 
-							var ti = state.getComponentIndex(id, transSys.systemIndex);
-							var pi = state.getComponentIndex(id, physics.systemIndex);
+							var ti = state.getComponentIndex(id, transSys.Index);
+							var pi = state.getComponentIndex(id, physics.Index);
 							if (ti != -1)
 							{
 								var t = transSys.getComponent(ti);
@@ -662,9 +662,9 @@ namespace TankComProject
 				msg.Write(2);
 				msg.Write(Clienteid);
 				var t = transSys.getComponent(
-					state.getComponentIndex(Clienteid, transSys.systemIndex));
+					state.getComponentIndex(Clienteid, transSys.Index));
 				var p = physics.getComponent(
-					state.getComponentIndex(Clienteid, physics.systemIndex));
+					state.getComponentIndex(Clienteid, physics.Index));
 				msg.Write(t.position.X);
 				msg.Write(t.position.Y);
 				msg.Write(p.LinearVelocity.X);
@@ -760,9 +760,9 @@ namespace TankComProject
 					msg.Write(2);
 					msg.Write(e);
 					var t = transSys.getComponent(
-						state.getComponentIndex(e, transSys.systemIndex));
+						state.getComponentIndex(e, transSys.Index));
 					var p = physics.getComponent(
-						state.getComponentIndex(e, physics.systemIndex));
+						state.getComponentIndex(e, physics.Index));
 					msg.Write(t.position.X);
 					msg.Write(t.position.Y);
 					msg.Write(p.LinearVelocity.X);

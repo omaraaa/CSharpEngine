@@ -142,7 +142,7 @@ namespace CS.Components
 				if (entity == -1)
 					continue;
 
-				var transfromIndex = _state.getComponentIndex(entity, systemIndex);
+				var transfromIndex = _state.getComponentIndex(entity, Index);
 				var transformC = transform.getComponent(transfromIndex);
 				var pos = transformC.position;
 
@@ -208,7 +208,7 @@ namespace CS.Components
 		{
 			if (followID != -1)
 			{
-				var index = _state.getComponentIndex(followID, transSys.systemIndex);
+				var index = _state.getComponentIndex(followID, transSys.Index);
 				if (index != -1)
 				{
 					var trans = transSys.getComponent(index);
@@ -299,7 +299,7 @@ namespace CS.Components
 					if (e == -1)
 						continue;
 
-					var tIndex = _state.getComponentIndex(e, systemIndex);
+					var tIndex = _state.getComponentIndex(e, Index);
 					if (tIndex != -1)
 					{
 						var rect = renderSys.getComponentByID(e).Bounds;
@@ -739,7 +739,7 @@ namespace CS.Components
 		
 		public void AddTimer(int id, Timer timer)
 		{
-			int index = _state.getComponentIndex(id, systemIndex);
+			int index = _state.getComponentIndex(id, Index);
 			if(index == -1)
 			{
 				index = AddComponent(id, new Timer[1]);

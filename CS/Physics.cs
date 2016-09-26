@@ -140,7 +140,7 @@ namespace CS.Components
 				if (entityIDs[i] == -1 || !components[i].Awake || components[i].IsStatic)
 					continue;
 
-				var index = _state.getComponentIndex(entityIDs[i], transformSys.systemIndex);
+				var index = _state.getComponentIndex(entityIDs[i], transformSys.Index);
 				if (index != -1)
 				{
 					var trans = transformSys.getComponent(index);
@@ -162,7 +162,7 @@ namespace CS.Components
 
 		public override void RemoveEntity(int id)
 		{
-			var index = _state.getComponentIndex(id, systemIndex);
+			var index = _state.getComponentIndex(id, Index);
 			world.RemoveBody(components[index]);
 			base.RemoveEntity(id);
 		}

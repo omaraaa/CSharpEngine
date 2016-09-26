@@ -539,7 +539,7 @@ namespace CS.Components
 
 		public void Render(Global G)
 		{
-			_batch.Begin(sortMode: SpriteSortMode.BackToFront, samplerState: SamplerState.PointWrap, transformMatrix: _state.getSystem<MG.Camera>().matrix, depthStencilState: DepthStencilState.DepthRead);
+			_batch.Begin(sortMode: SpriteSortMode.Deferred, samplerState: SamplerState.PointWrap, transformMatrix: _state.getSystem<MG.Camera>().matrix, depthStencilState: DepthStencilState.DepthRead);
 			for (int i = 0; i < size; ++i)
 			{
 				if (entityIDs[i] == -1)
@@ -547,8 +547,8 @@ namespace CS.Components
 				components[i].Render(_batch);
 
 			}
-
 			_batch.End();
+
 		}
 
 		public override BaseSystem DeserializeConstructor(State state, string name)
@@ -572,7 +572,7 @@ namespace CS.Components
 					continue;
 
 				var textureC = components[i];
-				var transfromIndex = _state.getComponentIndex(entityIDs[i], transform.systemIndex);
+				var transfromIndex = _state.getComponentIndex(entityIDs[i], transform.Index);
 				if (transfromIndex != -1)
 				{
 					var transformC = transform.getComponent(transfromIndex);
@@ -582,7 +582,7 @@ namespace CS.Components
 				//effect.Parameters["SpriteTexture"].SetValue(textureC.texture);
 				int pindex = -1;
 				if (physics != null)
-					pindex = _state.getComponentIndex(entityIDs[i], physics.systemIndex);
+					pindex = _state.getComponentIndex(entityIDs[i], physics.Index);
 
 
 				if (pindex != -1)

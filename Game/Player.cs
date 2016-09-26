@@ -180,7 +180,7 @@ class PlayerSystem : ComponentSystem<Player>, ISysUpdateable
 			bool moving = false;
 			var speed = ConvertUnits.ToSimUnits(3030);
 			var maxVel = ConvertUnits.ToSimUnits(100);
-			var spriteIndex = _state.getComponentIndex(entityIDs[i], renderSys.systemIndex);
+			var spriteIndex = _state.getComponentIndex(entityIDs[i], renderSys.Index);
 			if (player.isControllable)
 			{
 				if (keyState.IsKeyDown(Keys.A) || gamepad.IsButtonDown(Buttons.DPadLeft))
@@ -272,7 +272,7 @@ class PlayerSystem : ComponentSystem<Player>, ISysUpdateable
 
 	public override void RemoveEntity(int id)
 	{
-		var index = _state.getComponentIndex(id, systemIndex);
+		var index = _state.getComponentIndex(id, Index);
 		physics.world.RemoveBody(components[index].body);
 
 		base.RemoveEntity(id);
@@ -280,7 +280,7 @@ class PlayerSystem : ComponentSystem<Player>, ISysUpdateable
 
 	public void setControl(int id)
 	{
-		var index = _state.getComponentIndex(id, systemIndex);
+		var index = _state.getComponentIndex(id, Index);
 		if (index != -1)
 			components[index].isControllable = true;
 

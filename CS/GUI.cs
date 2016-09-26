@@ -114,7 +114,7 @@ namespace CS.Components
 				text.String = text.String.Remove(text.String.Length - 1, 1);
 			}
 
-			var renderIndex = state.getComponentIndex(id, renderSys.systemIndex);
+			var renderIndex = state.getComponentIndex(id, renderSys.Index);
 			var render = renderSys.getComponent(renderIndex) as RenderCollection;
 
 			render.renders[1] = text;

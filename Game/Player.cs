@@ -236,26 +236,26 @@ class PlayerSystem : ComponentSystem<Player>, ISysUpdateable
 				if (player.isTouching == 0)
 				{
 					if (vel.Y < 0f)
-						spr.Play("jumping", 30, false);
+						spr.Play("jumping", 1, false);
 					if (vel.Y > 1f)
-						spr.Play("falling", 30, false);
+						spr.Play("falling", 1, false);
 				}
 				else
 				{
 					if (vel.X > ConvertUnits.ToSimUnits(2f))
 					{
-						spr.Play("move", 8*Math.Abs((int)ConvertUnits.ToDisplayUnits(vel.X)/50), true);
+						spr.Play("move", 1, true);
 						spr.flipH = false;
 					}
 					else if (vel.X < -ConvertUnits.ToSimUnits(2f))
 					{
-						spr.Play("move", 8 * Math.Abs((int)ConvertUnits.ToDisplayUnits(vel.X)/50), true);
+						spr.Play("move", 1, true);
 						spr.flipH = true;
 					}
 					else
 					{
 						//spriteSys.Play("jumping", entityIDs[i], 30, false);
-						spr.Play("idle", 8, true);
+						spr.Play("idle", 1, true);
 					}
 				}
 

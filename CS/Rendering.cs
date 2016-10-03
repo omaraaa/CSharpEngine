@@ -303,185 +303,54 @@ namespace CS.Components
 		{
 		}
 	}
-	/*
-	class TextureSystem : ComponentSystem<Texture2>, ISysRenderable
-	{
-		TransformSystem transform;
-		PhysicsSystem physics;
-		TextRenderingSystem textrender;
-		Effect effect;
-		float timer = 0;
 
-		public TextureSystem(State state) : base(state, "TextureSystem")
+	class RenderTargets : Data<RenderTarget2D>, ISysRenderable
+	{
+		SpriteBatch _batch;
+		public RenderTargets(State state) : base(state, "RenderTargets")
 		{
 			_batch = new SpriteBatch(state.G.getSystem<MG.MonogameSystem>().Game.GraphicsDevice);
-			this.transform = state.getSystem<TransformSystem>();
-			this.physics = state.getSystem<PhysicsSystem>();
-			textrender = state.getSystem<TextRenderingSystem>();
-			//effect = state.G.getSystem<MG.MonogameSystem>().Game.Content.Load<Effect>("testeffect");
-		}
 
-		SpriteBatch _batch;
-		public SpriteBatch Batch
-		{
-			get
-			{
-				return _batch;
-			}
-		}
-
-		uint _renderIndex;
-		public uint RenderIndex
-		{
-			get
-			{
-				return _renderIndex;
-			}
-		}
-
-		public void Render(Global G)
-		{
-			timer += G.dt;
-
-
-			//effect.Parameters["time"].SetValue(timer);
-
-			_batch.Begin(sortMode: SpriteSortMode.BackToFront, samplerState: SamplerState.PointWrap, transformMatrix: _state.getSystem<MG.Camera>().matrix, depthStencilState: DepthStencilState.DepthRead);
-			for (int i = 0; i < size; ++i)
-			{
-				if (entityIDs[i] == -1)
-					continue;
-
-				var transfromIndex = _state.getComponentIndex(entityIDs[i], transform.systemIndex);
-				var transformC = transform.getComponent(transfromIndex);
-				var textureC = components[i];
-
-				//effect.Parameters["SpriteTexture"].SetValue(textureC.texture);
-				int pindex = -1;
-				if (physics != null)
-					pindex = _state.getComponentIndex(entityIDs[i], physics.systemIndex);
-
-				if (pindex != -1)
-				{
-					var p = physics.getComponent(pindex);
-					textureC.Render(_batch, ConvertUnits.ToDisplayUnits(p.Position), p.Rotation);
-				}
-				else
-				{
-					textureC.Render(_batch, transformC.position);
-				}
-
-			}
-			if(textrender != null)
-				textrender.Render(ref _batch);
-			_batch.End();
-		}
-
-		public Rectangle getRect(int id)
-		{
-			var index = _state.getComponentIndex(id, systemIndex);
-			if (index == -1)
-				return Rectangle.Empty;
-
-			var textureC = components[index];
-			Rectangle rect = textureC.textureRect;
-
-			int transfromIndex = -1;
-			if (transform.ContainsEntity(id, ref transfromIndex))
-			{
-				var transformC = transform.getComponent(transfromIndex);
-				rect.X = (int)(transformC.position.X - rect.Width / 2f);
-				rect.Y = (int)(transformC.position.Y - rect.Height / 2f);
-			}
-
-			return rect;
 		}
 
 		public override BaseSystem DeserializeConstructor(State state, string name)
 		{
-			return new TextureSystem(state);
-		}
-
-
-		protected override void SerailizeComponent(ref Texture2 t, BinaryWriter writer)
-		{
-			writer.Write(t.textureName);
-			writer.Write(t.layerDepth);
-			writer.Write(t.offset.X);
-			writer.Write(t.offset.Y);
-			writer.Write(t.scale.X);
-			writer.Write(t.scale.Y);
-			writer.Write(t.origin.X);
-			writer.Write(t.origin.Y);
-			writer.Write(t.textureRect.X);
-			writer.Write(t.textureRect.Y);
-			writer.Write(t.textureRect.Width);
-			writer.Write(t.textureRect.Height);
-			writer.Write(t.srcRect.X);
-			writer.Write(t.srcRect.Y);
-			writer.Write(t.srcRect.Width);
-			writer.Write(t.srcRect.Height);
-		}
-
-		protected override Texture2 DeserailizeComponent(BinaryReader reader)
-		{
-			var name = reader.ReadString();
-			var layer = reader.ReadInt32();
-			Texture2 t = new Texture2(_state.G, name, layer);
-			t.offset.X = reader.ReadSingle();
-			t.offset.Y = reader.ReadSingle();
-			t.scale.X = reader.ReadSingle();
-			t.scale.Y = reader.ReadSingle();
-			t.origin.X = reader.ReadSingle();
-			t.origin.Y = reader.ReadSingle();
-			t.textureRect.X = reader.ReadInt32();
-			t.textureRect.Y = reader.ReadInt32();
-			t.textureRect.Width = reader.ReadInt32();
-			t.textureRect.Height = reader.ReadInt32();
-			t.srcRect.X = reader.ReadInt32();
-			t.srcRect.Y = reader.ReadInt32();
-			t.srcRect.Width = reader.ReadInt32();
-			t.srcRect.Height = reader.ReadInt32();
-			return t;
-		}
-
-		public override void SerializeSystem(BinaryWriter writer)
-		{
+			throw new NotImplementedException();
 		}
 
 		public override void DeserializeSystem(BinaryReader reader)
 		{
+			throw new NotImplementedException();
 		}
-
-		public void Update(Global G)
+		Color c = Color.White;
+		public void Render(Global G)
 		{
-			for (int i = 0; i < size; ++i)
+			cleanup();
+			_batch.Begin(blendState: BlendState.AlphaBlend);
+			for(int i = size-1; i >= 0; --i)
 			{
-				if (entityIDs[i] == -1)
+				if(used[i] == -1)
 					continue;
-
-				var transfromIndex = _state.getComponentIndex(entityIDs[i], transform.systemIndex);
-				var transformC = transform.getComponent(transfromIndex);
-				var textureC = components[i];
-
-				//effect.Parameters["SpriteTexture"].SetValue(textureC.texture);
-				int pindex = -1;
-				if (physics != null)
-					pindex = _state.getComponentIndex(entityIDs[i], physics.systemIndex);
-
-
-				textureC.position = transformC.position;
-				if (pindex != -1)
-				{
-					var p = physics.getComponent(pindex);
-					textureC.rotation = p.Rotation;
-				}
-
-				
+				_batch.Draw(data[i], data[i].Bounds, c);
 			}
+			_batch.End();
 		}
 
-	}*/
+		public override void SerializeSystem(BinaryWriter writer)
+		{
+			throw new NotImplementedException();
+		}
+
+		protected override RenderTarget2D DeserailizeData(BinaryReader reader)
+		{
+			throw new NotImplementedException();
+		}
+
+		protected override void SerailizeData(ref RenderTarget2D component, BinaryWriter writer)
+		{
+			throw new NotImplementedException();
+		}
+	}
 
 	delegate IRender RenderDeserializer(State state, BinaryReader reader);
 	class RenderSystem : ComponentSystem<IRender>, ISysUpdateable, ISysRenderable
@@ -491,6 +360,9 @@ namespace CS.Components
 		RegistrySystem<RenderDeserializer> deserializeReg;
 		Effect effect;
 		float timer = 0;
+		RenderTarget2D target2D;
+		RenderTargets targets;
+		int targetIndex;
 
 		public RenderSystem(State state) : base(state, "RenderSystem")
 		{
@@ -503,6 +375,21 @@ namespace CS.Components
 				deserializeReg = new RegistrySystem<RenderDeserializer>(state.G, "RenderDeserializer");
 			}
 			//effect = state.G.getSystem<MG.MonogameSystem>().Game.Content.Load<Effect>("testeffect");
+			target2D = new RenderTarget2D(_batch.GraphicsDevice, _batch.GraphicsDevice.PresentationParameters.BackBufferWidth,
+				_batch.GraphicsDevice.PresentationParameters.BackBufferHeight,
+				false,
+				SurfaceFormat.Color,
+				DepthFormat.Depth24);
+			targets = state.G.getSystem<RenderTargets>();
+			targetIndex = targets.AddData(target2D);
+			targets.RegisterUse(targetIndex);
+			
+		}
+
+		public override void Deactivate()
+		{
+			targets.DeregisterUse(targetIndex);
+			base.Deactivate();
 		}
 
 		public override int AddComponent(int id, IRender component)
@@ -539,6 +426,9 @@ namespace CS.Components
 
 		public void Render(Global G)
 		{
+			_batch.GraphicsDevice.SetRenderTarget(target2D);
+			_batch.GraphicsDevice.Clear(Color.Transparent);
+
 			_batch.Begin(sortMode: SpriteSortMode.Deferred, samplerState: SamplerState.PointWrap, transformMatrix: _state.getSystem<MG.Camera>().matrix, depthStencilState: DepthStencilState.DepthRead);
 			for (int i = 0; i < size; ++i)
 			{
@@ -549,6 +439,7 @@ namespace CS.Components
 			}
 			_batch.End();
 
+			_batch.GraphicsDevice.SetRenderTarget(null);
 		}
 
 		public override BaseSystem DeserializeConstructor(State state, string name)

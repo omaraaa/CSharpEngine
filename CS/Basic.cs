@@ -903,11 +903,13 @@ namespace Entities
 		public int id;
 		public int textureIndex;
 		uint transformIndex;
+		uint renderSys;
 
 		public Image(State state, String image, Vector2 position, Vector2 offset, float layer = 0.9f, bool topright = false)
 		{
 			var transformSys = state.getSystem<TransformSystem>();
 			var textureSys = state.getSystem<RenderSystem>();
+			renderSys = textureSys.Index;
 
 			id = state.CreateEntity();
 

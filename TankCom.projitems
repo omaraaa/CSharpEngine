@@ -24,6 +24,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)CS\Util\TiledLoader.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Game1.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Game\Player.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Game\TankComGame.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)LD30\LD36Game.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Monogame\Camera.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Monogame\MonogameSystem.cs" />

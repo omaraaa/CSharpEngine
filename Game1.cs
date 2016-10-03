@@ -86,10 +86,8 @@ namespace TankComProject
 
 		public void Start(State s, int id)
 		{
-			var G = s.G;
-			G.deactivateState(s.index);
 			G.ActivateState(state);
-			guiState = null;
+			G.deactivateState(guiState.index);
 		}
 
 		/// <summary>
@@ -128,8 +126,11 @@ namespace TankComProject
 			G = new Global();
 			var monogame = new MG.MonogameSystem(G);
 			monogame.Game = this;
+			var rendertargets = new RenderTargets(G);
 			var camerag = new Camera(G);
+			TransformSystem transSysG = new TransformSystem(G);
 			sprSys = new SpriteSystem(G);
+			var renderer2 = new RenderSystem(G);
 			var msgSys = new MessageSystem(G);
 			var GLuaSys = new GlobalLuaSystem(G);
 			var fontSys = new FontSystem(G);
@@ -163,10 +164,8 @@ namespace TankComProject
 			GLuaSys.luaScript.Call(gridfunc, state);
 
 			TransformSystem transSys2 = new TransformSystem(guiState);
-			TransformSystem transSysG = new TransformSystem(G);
 			//PhysicsSystem physics2 = new PhysicsSystem(guiState);
 			var renderSys2 = new RenderSystem(guiState);
-			var renderer2 = new RenderSystem(G);
 			//CameraFollowSystem cameraFollow2 = new CameraFollowSystem(guiState);
 			//SpriteSystem sprSys2 = new SpriteSystem(guiState);
 			MouseFollowSystem mousesys2 = new MouseFollowSystem(G);
@@ -194,7 +193,7 @@ namespace TankComProject
 				mousesys2.AddEntity(img.id);
 			}
 			{
-				for(int i = 0; i < 10000; ++i)
+				for(int i = 0; i < 10; ++i)
 				{
 					var textObj = new Text();
 					textObj.Color = Color.White;
@@ -280,6 +279,7 @@ namespace TankComProject
 
 			//G.ActivateState(state);
 			G.ActivateState(guiState);
+			//state.Paused = true;
 		
 			base.Initialize();
 		}

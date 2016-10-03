@@ -18,19 +18,19 @@ namespace CS.Components
 	public struct Animation
 	{
 		public string name;
-		public float fps;
+		public float time_scale;
 		public int index;
 		public int frameLength;
 		public int[] frames;
 		public bool repeat;
 		public bool active;
 
-		public Animation(String name, int[] frames, int fps, bool repeat)
+		public Animation(String name, int[] frames, int time_scale, bool repeat)
 		{
 			this.name = name;
 			this.frames = frames;
 			frameLength = frames.Length;
-			this.fps = fps;
+			this.time_scale = time_scale;
 			this.repeat = repeat;
 			active = true;
 			index = 0;
@@ -48,6 +48,7 @@ namespace CS.Components
 		public Animation currentAnimation;
 		public bool flipH ;
 		float count;
+		public float frame_duration;
 
 		public string Type
 		{
@@ -104,6 +105,7 @@ namespace CS.Components
 			flipH = false;
 			currentAnimation = new Animation();
 			spriteSystem = s;
+			frame_duration = 0;
 		}
 
 		public void UpdateAnimation(Global G)
@@ -111,10 +113,10 @@ namespace CS.Components
 			//Animation Step
 			if(currentAnimation.active)
 			{
-				count += G.dt;
-				if(count >= 1f/currentAnimation.fps)
+				count += G.dt*currentAnimation.time_scale;
+				if(count >= frame_duration*0.001f)
 				{
-					count -= 1f / currentAnimation.fps;
+					count -= frame_duration * 0.001f;
 					currentAnimation.index++;
 					if(currentAnimation.frameLength - 1 < currentAnimation.index && !currentAnimation.repeat)
 					{
@@ -144,7 +146,8 @@ namespace CS.Components
 			writer.Write(currentAnimation.name);
 			writer.Write(currentAnimation.index);
 			writer.Write(currentAnimation.repeat);
-			writer.Write(currentAnimation.fps);
+			writer.Write(currentAnimation.time_scale);
+			writer.Write(frame_duration);
 		}
 
 		public IRender DeserializeConstructor(State state, BinaryReader reader)
@@ -161,12 +164,14 @@ namespace CS.Components
 			var index = reader.ReadInt32();
 			var repeat = reader.ReadBoolean();
 			var fps = reader.ReadSingle();
+			var fd = reader.ReadSingle();
 
 			spr.currentAnimation = spriteSys.animations[name];
 			spr.currentAnimation.active = active;
 			spr.currentAnimation.index = index;
 			spr.currentAnimation.repeat = repeat;
-			spr.currentAnimation.fps = fps;
+			spr.currentAnimation.time_scale = fps;
+			frame_duration = fd;
 
 			return spr;
 		}
@@ -180,29 +185,33 @@ namespace CS.Components
 				return;
 
 			var index = currentAnimation.index;
-			texture.srcRect = spriteSystem.frames[texture.textureName][currentAnimation.frames[index]];
+			texture.srcRect = spriteSystem.frames[texture.textureName][currentAnimation.frames[index]].rect;
 			texture.resetRect();
 			texture.effect = flipH ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
+			frame_duration = spriteSystem.frames[texture.textureName][currentAnimation.frames[index]].time;
 
 			UpdateAnimation(state.G);
 		}
 
-		public void Play(String name, int fps, bool repeat)
+		public void Play(String name, int timeScale, bool repeat)
 		{
 			if (currentAnimation.name != name)
 			{
 				currentAnimation = spriteSystem.animations[name];
-				currentAnimation.fps = fps;
+				currentAnimation.time_scale = timeScale;
 				currentAnimation.repeat = repeat;
 
 
-				texture.srcRect = spriteSystem.frames[texture.textureName][currentAnimation.frames[0]];
+				texture.srcRect = spriteSystem.frames[texture.textureName][currentAnimation.frames[0]].rect;
 				texture.resetRect();
 				texture.effect = flipH ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
+
+				frame_duration = spriteSystem.frames[texture.textureName][currentAnimation.frames[0]].time;
+				count = 0;
 			}
 			else
 			{
-				currentAnimation.fps = fps;
+				currentAnimation.time_scale = timeScale;
 				currentAnimation.repeat = repeat;
 			}
 		}
@@ -211,17 +220,31 @@ namespace CS.Components
 		{
 
 			currentAnimation.name = "";
-			currentAnimation.fps = 1;
+			currentAnimation.time_scale = 0;
 			currentAnimation.repeat = true;
 			currentAnimation.index = 0;
 			currentAnimation.frames = new int[] { frameIndex };
-			currentAnimation.active = true;
+			currentAnimation.active = false;
 			currentAnimation.frameLength = 1;
 
-			texture.srcRect = spriteSystem.frames[texture.textureName][currentAnimation.frames[0]];
+			texture.srcRect = spriteSystem.frames[texture.textureName][currentAnimation.frames[0]].rect;
 			texture.resetRect();
 			texture.effect = flipH ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
 
+			frame_duration = spriteSystem.frames[texture.textureName][currentAnimation.frames[0]].time;
+			count = 0;
+		}
+	}
+
+	struct Frame
+	{
+		public Rectangle rect;
+		public float time;
+
+		public Frame(int x, int y, int w, int h, float ftime)
+		{
+			rect = new Rectangle(x, y, w, h);
+			time = ftime;
 		}
 	}
 
@@ -232,13 +255,13 @@ namespace CS.Components
 	{
 		RenderSystem renderSys;
 		//Frames of each texture
-		public Dictionary<String, Rectangle[]> frames;
+		public Dictionary<String, Frame[]> frames;
 		//Animations: Contians indexes for each frame of animation
 		public Dictionary<String, Animation> animations;
 
 		public SpriteSystem(Global state) : base(state, "SpriteSystem")
 		{
-			frames = new Dictionary<string, Rectangle[]>();
+			frames = new Dictionary<string, Frame[]>();
 			animations = new Dictionary<string, Animation>();
 			renderSys = state.getSystem<RenderSystem>();
 		}
@@ -253,19 +276,20 @@ namespace CS.Components
 			animations[animation.name] = animation;
 		}
 
-		public void CreateGridFrames(String textureName, int frameWidth, int framwHeight)
+		public void CreateGridFrames(String textureName, int frameWidth, int framwHeight, float frametime_ms)
 		{
 			var tex = _state.G.getSystem<MG.MonogameSystem>().getTexture(textureName);
 			var w = tex.Width;
 			var h = tex.Height;
 			var wc = w / frameWidth;
 			var hc = h / framwHeight;
-			frames[textureName] = new Rectangle[wc*hc];
+			frames[textureName] = new Frame[wc * hc];
+
 			for (int i = 0; i < wc*hc; ++i)
 			{
 				var x = (i % wc) * frameWidth;
 				var y = ((i / wc) % hc) * framwHeight;
-				frames[textureName][i] = new Rectangle(x, y, frameWidth, framwHeight);
+				frames[textureName][i] = new Frame(x, y, frameWidth, framwHeight, frametime_ms);
 
 			}
 		}
@@ -279,14 +303,15 @@ namespace CS.Components
 			JsonTextReader json = new JsonTextReader(r);
 			JsonSerializer s = new JsonSerializer();
 
-			List<Rectangle> frames = new List<Rectangle>();
+			List<Rectangle> rects = new List<Rectangle>();
+			List<float> durations = new List<float>();
 
 			while (json.Read())
 			{
 
 				if (json.Value != null)
 				{
-					//Debug.Print(json.Value.ToString());
+					Debug.Print(json.Value.ToString());
 					if(json.Value.ToString() == "frame")
 					{
 						Rectangle frame = new Rectangle();
@@ -307,7 +332,13 @@ namespace CS.Components
 						var Height = json.ReadAsInt32();
 						if (Height != null)
 							frame.Height = Height.Value;
-						frames.Add(frame);
+						rects.Add(frame);
+					}
+
+					if (json.Value.ToString() == "duration")
+					{
+						var d = json.ReadAsDouble();
+						durations.Add((float) d.Value);
 					}
 
 					if (json.Value.ToString() == "frameTags")
@@ -345,12 +376,14 @@ namespace CS.Components
 			}
 			//load the frames
 			{
-				this.frames[texture] = new Rectangle[frames.Count];
-				int i = 0;
-				foreach (var f in frames)
+				this.frames[texture] = new Frame[rects.Count];
+				for (int i = 0; i < rects.Count; ++i)
 				{
-					this.frames[texture][i] = f;
-					i++;
+					this.frames[texture][i] = new Frame
+					{
+						rect = rects[i],
+						time = durations[i]
+					};
 				}
 			}
 		}

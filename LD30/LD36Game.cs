@@ -105,6 +105,7 @@ namespace LD36
 			{
 				var monogame = new MG.MonogameSystem(G);
 				monogame.Game = this;
+				var rendertargets = new RenderTargets(G);
 				var camera = new MG.Camera(G);
 				var spriteSys = new SpriteSystem(G);
 				var fontsys = new FontSystem(G);
@@ -149,7 +150,7 @@ namespace LD36
 				var physics = new PhysicsSystem(gameState);
 				var render = new RenderSystem(gameState);
 				var playerSys = new PlayerSystem(gameState);
-				gameState.getSystem<MG.Camera>().setScale(new Vector2(2, 2));
+				gameState.getSystem<MG.Camera>().setScale(new Vector2(1, 1));
 
 				TiledLoader.LoadTiledLua(gameState, "tilemap.lua");
 			}

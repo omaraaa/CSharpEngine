@@ -32,6 +32,11 @@ namespace CS
 
 		}
 
+		virtual public void Deactivate()
+		{
+
+		}
+
 		abstract public void SerializeSystem(BinaryWriter writer);
 		abstract public void DeserializeSystem(BinaryReader reader);
 
@@ -47,8 +52,6 @@ namespace CS
 
 		abstract public BaseSystem DeserializeConstructor(State state, string name);
 	}
-
-
 
 	public abstract class EntitySystem : BaseSystem
 	{
@@ -178,7 +181,6 @@ namespace CS
 	public abstract class ComponentSystem<T> : EntitySystem
 	{
 		protected T[] components;
-		protected uint index;
 
 		protected uint cachedComponent;
 
@@ -186,7 +188,6 @@ namespace CS
 		{
 			components = new T[0];
 			size = 0;
-			index = 0;
 			cachedComponent = 0;
 		}
 
@@ -277,17 +278,20 @@ namespace CS
 	{
 		protected T[] data;
 		protected int[] freeIndexes;
-		protected uint index;
+		protected int[] used;
 		protected int size;
 		protected uint cachedComponent;
+
+		public bool RemoveUnused { get; set; }
 
 		public Data(State state, String name) : base(state, name)
 		{
 			data = new T[0];
+			used = new int[0];
 			freeIndexes = new int[0];
 			size = 0;
-			index = 0;
 			cachedComponent = 0;
+			RemoveUnused = true;
 		}
 
 		virtual public int AddData(T component)
@@ -296,19 +300,45 @@ namespace CS
 			{
 				size++;
 				Array.Resize(ref data, size);
+				Array.Resize(ref used, size);
 				data[size - 1] = component;
+				used[size - 1] = 0;
 
 				return size - 1;
 			}
 			else
 			{
 				var index = freeIndexes[freeIndexes.Length - 1];
+
 				data[index] = component;
+				used[index] = 0;
 
 				Array.Resize(ref freeIndexes, freeIndexes.Length - 1);
 
 				return index;
 			}
+			
+		}
+
+		virtual protected void RemoveData(int index)
+		{
+			if (index == -1)
+				return;
+
+			used[index] = -1;
+
+			Array.Resize(ref freeIndexes, freeIndexes.Length + 1);
+			freeIndexes[freeIndexes.Length - 1] = index;
+		}
+
+		public void RegisterUse(int index)
+		{
+			used[index] += 1;
+		}
+
+		public void DeregisterUse(int index)
+		{
+			used[index] -= 1;
 		}
 
 		public T this[int key]
@@ -366,6 +396,17 @@ namespace CS
 
 		virtual protected void postSerialization(BinaryWriter writer) { }
 		virtual protected void postDeserialization(BinaryReader reader) { }
+
+		protected void cleanup()
+		{
+			for(int i = 0; i < size; ++i)
+			{
+				if(used[i] == 0)
+				{
+					RemoveData(i);
+				}
+			}
+		}
 	}
 	public class EntityManager : BaseSystem
 	{
@@ -417,6 +458,100 @@ namespace CS
 		}
 	}
 
+	public class Node : BaseSystem, ISysUpdateable, ISysRenderable
+	{
+		int[] systems;
+		int[] usystems;
+		int[] rsystems;
+
+		public Node(string name) : base(null, name)
+		{
+		}
+
+		public override BaseSystem DeserializeConstructor(State state, string name)
+		{
+			throw new NotImplementedException();
+		}
+
+		public override void DeserializeSystem(BinaryReader reader)
+		{
+			throw new NotImplementedException();
+		}
+
+		public override void SerializeSystem(BinaryWriter writer)
+		{
+			throw new NotImplementedException();
+		}
+
+		public void Update(Global G)
+		{
+			throw new NotImplementedException();
+		}
+
+		public void Render(Global G)
+		{
+			throw new NotImplementedException();
+		}
+	}
+
+	public class CSystem : Data<BaseSystem>, ISysUpdateable, ISysRenderable
+	{
+		Node root;
+		public CSystem() : base(null, "CSystem")
+		{
+			root = new Node(null, "G");
+			base.AddData(root);
+		}
+
+		public override void Initialize()
+		{
+			
+			base.Initialize();
+		}
+
+		public override BaseSystem DeserializeConstructor(State state, string name)
+		{
+			return new CSystem();
+		}
+
+		public override void DeserializeSystem(BinaryReader reader)
+		{
+			throw new NotImplementedException();
+		}
+
+		public override void SerializeSystem(BinaryWriter writer)
+		{
+			throw new NotImplementedException();
+		}
+
+		protected override BaseSystem DeserailizeData(BinaryReader reader)
+		{
+			throw new NotImplementedException();
+		}
+
+		protected override void SerailizeData(ref BaseSystem component, BinaryWriter writer)
+		{
+			throw new NotImplementedException();
+		}
+
+		public void Update(Global G)
+		{
+			for (int i = 0; i < size; ++i)
+			{
+				if (data[i].updateIndex != -1)
+				{
+					var sys = (ISysUpdateable)data[i];
+					sys.Update(G);
+				}
+			}
+		}
+
+		public void Render(Global G)
+		{
+			throw new NotImplementedException();
+		}
+	}
+
 	public class State
 	{
 		private BaseSystem[] systems;
@@ -430,6 +565,8 @@ namespace CS
 
 		public Global G;
 		public int index;
+
+		public bool Paused { get; set; }
 
 		public State(Global G)
 		{
@@ -445,6 +582,12 @@ namespace CS
 
 		protected void Initialize()
 		{
+		}
+
+		public void Deactivate()
+		{
+			foreach (var sys in systems)
+				sys.Deactivate();
 		}
 
 		public int EntitiesCount()
@@ -483,6 +626,8 @@ namespace CS
 
 		public void Update()
 		{
+			if (Paused)
+				return;
 			CleanUp();
 			foreach (uint index in updatableIndexes)
 			{
@@ -493,6 +638,8 @@ namespace CS
 
 		public void Render()
 		{
+			if (Paused)
+				return;
 			for (int i = renderableIndexes.Length-1; i >=0; --i)
 			{
 				var index = renderableIndexes[i];
@@ -758,6 +905,7 @@ namespace CS
 
 		public void deactivateState(int index)
 		{
+			activeStates[index].Deactivate();
 			activeStates[index] = null;
 		}
 

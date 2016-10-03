@@ -11,31 +11,23 @@ namespace CS
 
 	public abstract class BaseSystem
 	{
-		
-		public State _state;
+		public GlobalData G { get; private set; }
 
 		public uint Index { get; private set; }
+		public uint Owner { get; set; }
 		public int updateIndex = -1;
 		public int renderIndex = -1;
 		public String name;
 
-		public BaseSystem(State state, String name)
+		public BaseSystem(GlobalData G, String name)
 		{
-			_state = state;
-			Index = state.RegisterSystem(this);
+			Owner = 0;
+			Index = (uint) G.AddData(this);
 			this.name = name;
-			state.G.RegisterSystemSerialization(name, DeserializeConstructor);
 		}
 
-		virtual public void Initialize()
-		{
-
-		}
-
-		virtual public void Deactivate()
-		{
-
-		}
+		virtual public void Initialize() { }
+		virtual public void Deactivate() { }
 
 		abstract public void SerializeSystem(BinaryWriter writer);
 		abstract public void DeserializeSystem(BinaryReader reader);
@@ -55,14 +47,16 @@ namespace CS
 
 	public abstract class EntitySystem : BaseSystem
 	{
+		public State State { get; private set; }
+
 		protected int[] entityIDs;
 		protected int[] freeIndexes;
 		protected int size;
 		protected int serializeSize = 0;
 
-		public EntitySystem(State state, string name) : base(state, name)
+		public EntitySystem(State state, string name) : base(state.G, name)
 		{
-			
+			State = state;	
 			entityIDs = new int[0];
 			freeIndexes = new int[0];
 			size = 0;
@@ -70,7 +64,7 @@ namespace CS
 
 		virtual public int AddEntity(int id)
 		{
-			var cindex = _state.getComponentIndex(id, Index);
+			var cindex = State.getComponentIndex(id, Index);
 			if (cindex != -1 && cindex < size)
 			{
 				entityIDs[cindex] = id;
@@ -81,7 +75,7 @@ namespace CS
 				Array.Resize(ref entityIDs, size);
 				entityIDs[size - 1] = id;
 
-				_state.AddComponent(id, Index, size - 1);
+				State.AddComponent(id, Index, size - 1);
 				return size - 1;
 			}
 			else
@@ -89,7 +83,7 @@ namespace CS
 				var index = freeIndexes[freeIndexes.Length - 1];
 
 				entityIDs[index] = id;
-				_state.AddComponent(id, Index, index);
+				State.AddComponent(id, Index, index);
 
 				Array.Resize(ref freeIndexes, freeIndexes.Length - 1);
 
@@ -99,7 +93,7 @@ namespace CS
 
 		virtual public void RemoveEntity(int id)
 		{
-			var index = _state.getComponentIndex(id, Index);
+			var index = state.getComponentIndex(id, Index);
 			if (index == -1)
 				return;
 
@@ -107,12 +101,12 @@ namespace CS
 
 			Array.Resize(ref freeIndexes, freeIndexes.Length + 1);
 			freeIndexes[freeIndexes.Length - 1] = index;
-			_state.RemoveComponent(id, Index);
+			state.RemoveComponent(id, Index);
 		}
 
 		public bool ContainsEntity(int id, ref int index)
 		{
-			var indx = _state.getComponentIndex(id, Index);
+			var indx = state.getComponentIndex(id, Index);
 			index = indx;
 			if (indx != -1)
 				return true;
@@ -458,46 +452,13 @@ namespace CS
 		}
 	}
 
-	public class Node : BaseSystem, ISysUpdateable, ISysRenderable
+	public class GlobalData : Data<BaseSystem>, ISysUpdateable, ISysRenderable
 	{
-		int[] systems;
-		int[] usystems;
-		int[] rsystems;
 
-		public Node(string name) : base(null, name)
-		{
-		}
+		private uint[] updateIndexes;
+		private uint[] renderIndexes;
 
-		public override BaseSystem DeserializeConstructor(State state, string name)
-		{
-			throw new NotImplementedException();
-		}
-
-		public override void DeserializeSystem(BinaryReader reader)
-		{
-			throw new NotImplementedException();
-		}
-
-		public override void SerializeSystem(BinaryWriter writer)
-		{
-			throw new NotImplementedException();
-		}
-
-		public void Update(Global G)
-		{
-			throw new NotImplementedException();
-		}
-
-		public void Render(Global G)
-		{
-			throw new NotImplementedException();
-		}
-	}
-
-	public class CSystem : Data<BaseSystem>, ISysUpdateable, ISysRenderable
-	{
-		Node root;
-		public CSystem() : base(null, "CSystem")
+		public GlobalData() : base(null, "CSystem")
 		{
 			root = new Node(null, "G");
 			base.AddData(root);
@@ -552,9 +513,11 @@ namespace CS
 		}
 	}
 
-	public class State
+	public struct State
 	{
-		private BaseSystem[] systems;
+		private uint[][] data;
+		private uint[] systems;
+
 		private uint[] updatableIndexes;
 		private uint[] renderableIndexes;
 
@@ -563,12 +526,12 @@ namespace CS
 		private Stack<int> toRemoveEntities;
 		public Queue<int> addedEntities;
 
-		public Global G;
+		public GlobalData G;
 		public int index;
 
 		public bool Paused { get; set; }
 
-		public State(Global G)
+		public State(GlobalData G)
 		{
 			systems = new BaseSystem[0];
 			updatableIndexes = new uint[0];

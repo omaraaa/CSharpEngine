@@ -378,15 +378,12 @@ namespace CS.Components
 			target2D = new RenderTarget2D(_batch.GraphicsDevice, _batch.GraphicsDevice.PresentationParameters.BackBufferWidth,
 				_batch.GraphicsDevice.PresentationParameters.BackBufferHeight,
 				false,
-				_batch.GraphicsDevice.PresentationParameters.BackBufferFormat,
-				_batch.GraphicsDevice.PresentationParameters.DepthStencilFormat);
+				SurfaceFormat.Color,
+				DepthFormat.Depth24);
 			targets = state.G.getSystem<RenderTargets>();
 			targetIndex = targets.AddData(target2D);
 			targets.RegisterUse(targetIndex);
-			_batch.GraphicsDevice.SetRenderTarget(target2D);
-			_batch.GraphicsDevice.Clear(Color.Transparent);
-			_batch.GraphicsDevice.SetRenderTarget(null);
-
+			
 		}
 
 		public override void Deactivate()

@@ -460,7 +460,7 @@ namespace CS
 
 		public GlobalData() : base(null, "CSystem")
 		{
-			root = new Node(null, "G");
+			root = new Node("G");
 			base.AddData(root);
 		}
 
